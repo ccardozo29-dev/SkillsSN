@@ -27,6 +27,12 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
   - vale para a página 2, para a arte dentro da ficha e para o módulo do clichê. Os cortes internos da tela (ex.: as folhas 15x15 dentro do 30x30) não ganham margem;
   - referências do usuário, feitas no Corel: Van-Dal 30x70 v1 e Nacho Man 2026 30x30 e 15x15 v1. Nas duas, a tinta vai de 1,00 a L − 1,00 mm, encosta nas laterais, o fundo kraft cobre o quadro todo e o centro da tinta cai no meio da folha;
   - o `gerar()` e o `limpar_pdf()` fazem esse corte sozinhos (`margem=1.0`). O fundo é reconhecido por cobrir o quadro inteiro, então ele tem que ser um retângulo (ou imagem) do tamanho da arte.
+- Logomarcas distribuídas (estampa com a logo do cliente repetida), na primeira versão de uma arte e quando o pedido não diz a orientação, tamanho ou espaçamento (regra do usuário, 18/11/2026):
+  - **orientação:** a logo inclinada a **40°**, subindo da esquerda para a direita, para a estampa ficar na diagonal. Se o pedido ou o cliente disser a orientação (reta, vertical, outro ângulo), vale o que foi pedido;
+  - **tamanho:** a logo com uns **40 mm** na maior dimensão (sem a inclinação);
+  - **espaçamento:** uns **35 mm** de borda a borda entre uma logo e a próxima, um pouco menor que os ~40 mm usados até agora;
+  - esses valores são o ponto de partida: tamanho e espaçamento podem mudar um pouco para o passo fechar em 330 mm (ver a prioridade do cilindro). Diga na entrega os valores que ficaram (ângulo, tamanho da logo, espaçamento e passo) e cote o tamanho da logo e o espaçamento na ficha;
+  - a partir da v2, siga o que o cliente aprovou ou pediu na versão anterior.
 - Arte a partir de imagem: se o motivo se repete na imagem, alinhar as cópias com precisão subpixel e tirar a média (fica mais nítido); separar as cores por desmistura linear (branco + tintas); contornar com marching squares e ajustar curvas Bézier (Schneider) com detecção de cantos. Conferir o desvio sobrepondo ao original e mostrar uma comparação ampliada.
 
 ## Padrão de entrega: PDF de 2 páginas

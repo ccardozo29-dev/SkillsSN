@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.2.0 – 18/11/2026
+- Nova regra para logomarcas distribuídas na primeira versão, quando o pedido não informa: logo inclinada a 40° (diagonal), com ~40 mm na maior dimensão e ~35 mm de espaçamento entre logos (antes eram ~40 mm).
+- Tamanho e espaçamento podem mudar um pouco para o passo fechar em 330 mm; os valores finais vão na entrega e nas cotas da ficha.
+
 ## v1.1.0 – 18/11/2026
 - Fechamento em 330 mm passa a ser a prioridade: o passo é ajustado ao divisor de 330 mais próximo, mexendo o mínimo no motivo.
 - O 420 mm só entra quando o 330 deixaria o padrão visivelmente diferente do pedido (referência: ajuste acima de ~5% no passo), com a justificativa na entrega.
