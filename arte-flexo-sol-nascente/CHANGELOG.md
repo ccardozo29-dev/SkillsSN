@@ -1,5 +1,10 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.1.0 – 18/11/2026
+- Fechamento em 330 mm passa a ser a prioridade: o passo é ajustado ao divisor de 330 mais próximo, mexendo o mínimo no motivo.
+- O 420 mm só entra quando o 330 deixaria o padrão visivelmente diferente do pedido (referência: ajuste acima de ~5% no passo), com a justificativa na entrega.
+- Exemplo de uso do `gerar()` trocado para `cilindro=330`.
+
 ## v1.0.0 – 18/11/2026
 Primeira versão no repositório, com o estado atual da skill:
 - Repetição que fecha nos cilindros de 330 e 420 mm; aviso de emenda em fundo contínuo; módulo de encaixe.

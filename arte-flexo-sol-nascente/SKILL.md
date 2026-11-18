@@ -7,7 +7,8 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
 
 ## Como a gráfica trabalha
 - Papel de seda (também kraft e barreira) impresso em flexografia com clichê, cores Pantone chapadas, sem retícula. A bobina tem corte aleatório: o tamanho da folha não define a arte, a estampa precisa ser contínua.
-- Cilindros de 330 mm e 420 mm. No sentido da máquina, o passo da repetição tem que dividir o cilindro exatamente (330: 330, 165, 110, 82,5...; 420: 420, 210, 140, 105, 84...). Na largura não há amarração.
+- Cilindros de 330 mm e 420 mm. No sentido da máquina, o passo da repetição tem que dividir o cilindro exatamente (330: 330, 165, 110, 82,5, 66, 55...; 420: 420, 210, 140, 105, 84, 70...). Na largura não há amarração.
+- **Prioridade: fechamento em 330 mm** (regra do usuário, 18/11/2026). Comece sempre pelo 330: ajuste o passo ao divisor de 330 mais próximo do pedido, mexendo o mínimo no tamanho ou no espaçamento do motivo. Use o 420 só quando for necessário, ou seja, quando fechar em 330 deixaria o padrão visivelmente diferente do que foi pedido e o 420 fica bem mais perto. Como referência, um ajuste de até uns 5% no passo é aceitável no 330. Exemplo: um passo pedido de 140 mm cairia em 165 ou 110 no 330 (cerca de 18% a 21% de diferença), mas fecha exato em 420, então vai para o 420. Sempre que usar o 420, diga na entrega por que o 330 não serviu (o passo pedido e o passo que ficaria no 330).
 - Corte individual (quando o pedido diz "corte individual"): todas as folhas saem exatamente iguais. Não existe repetição nem cilindro nessa arte, nem 330 nem 420: a arte é a própria folha, no formato pedido. Na ficha: `sentido=False` (sem "Sentido da repetição"), nenhuma cota de passo ou de repetição e Observações só "CORTE INDIVIDUAL SEM RETICULADO" (`obs=['CORTE INDIVIDUAL SEM RETICULADO']`). A margem de 1 mm vale igual. Supor cilindro num corte individual foi um erro corrigido pelo usuário na Steve Madden 70x30 (17/11/2026).
 - O clichê é enrolado no cilindro e na emenda fica um pequeno espaço entre as artes. Isso é normal. Se o fundo for contínuo (grade, listras, chapado), avisar logo no início que a emenda vai aparecer, para a produção e o cliente saberem.
 - Módulo de encaixe: quando pedirem, a emenda é "torta", passa só pelo fundo e fica a pelo menos 2,5 mm de qualquer desenho. Entregar só o módulo, para colar lado a lado no Corel (Etapa e repetição com deslocamento igual ao passo).
@@ -18,7 +19,7 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
 ## Regras de arte
 - Só cores especiais com o nome exato da cartela PANTONE Solid Coated ("PANTONE 7426 C"). Preto é preto puro e aparece na ficha como "Pantone PRETO". Nada de CMYK/RGB na arte; retícula vira chapado.
 - Traço ou vazado abaixo de 0,15 mm e microtexto abaixo de uns 2 mm de altura são arriscados em papel seda: avisar.
-- Conferir sempre: passo x cilindro, motivos cortados na borda aparecem pela metade dos dois lados, nada de desenho cortado na emenda. No corte individual não há passo nem emenda: conferir o formato e a margem.
+- Conferir sempre: passo x cilindro (330 primeiro; se ficou em 420, a justificativa está na entrega), motivos cortados na borda aparecem pela metade dos dois lados, nada de desenho cortado na emenda. No corte individual não há passo nem emenda: conferir o formato e a margem.
 - Margem de 1 mm na largura (regra do usuário, 17/11/2026). No formato final, dentro do quadro (C x L):
   - a arte fica centralizada no quadro e termina a 1 mm da borda de cima e a 1 mm da borda de baixo. O desenho que passa dessas linhas é cortado reto nelas (corte de verdade na curva: não some nem muda de lugar);
   - nas laterais (esquerda e direita, sentido da máquina) não tem margem: a arte vai até a borda e é cortada nela;
@@ -49,7 +50,7 @@ import ficha
 ficha.gerar('arte.pdf', ficha.nome_arquivo('Nico e Pippa', '30x70', 2),
             nome='Nico e Pippa', formato='30x70', versao=2,
             substrato='Papel Seda 20grm', cores=['PANTONE 7426 C', 'PANTONE 578 C'],
-            cilindro=420,                       # logo da Sol Nascente entra sozinha (modelo_padrao)
+            cilindro=330,                       # 330 é a prioridade; 420 só se necessário. Logo entra sozinha
             cotas=[dict(p1=(20, 40), p2=(230, 40), off=12, size=18, eixo='h')])  # mm na arte
 ```
 4. Cor Pantone nova: buscar o Lab D50 (Solid Coated) e passar `lab_extra={'PANTONE XXXX C': (L, a, b)}`. Sem isso a separação sai certa, mas a amostra na tela fica preta. Ao abrir o PDF, o Corel troca o Lab pelo da paleta dele: se o usuário devolver um PDF exportado do Corel, copiar o Lab da Separation para o `PANTONE_LAB` (foi assim com a 172 C).
