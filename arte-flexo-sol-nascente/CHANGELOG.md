@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.3.0 – 18/11/2026
+- Nova regra para arte distribuída no corte aleatório: malha de motivos/logos centralizada na folha, com cortes simétricos (corte de cima = corte de baixo, esquerda = direita), mostrando ao cliente que as logos são cortadas nas bordas.
+- Item de conferência atualizado para checar essa simetria.
+
 ## v1.2.0 – 18/11/2026
 - Nova regra para logomarcas distribuídas na primeira versão, quando o pedido não informa: logo inclinada a 40° (diagonal), com ~40 mm na maior dimensão e ~35 mm de espaçamento entre logos (antes eram ~40 mm).
 - Tamanho e espaçamento podem mudar um pouco para o passo fechar em 330 mm; os valores finais vão na entrega e nas cotas da ficha.

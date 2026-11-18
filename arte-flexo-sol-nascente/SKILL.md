@@ -19,7 +19,7 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
 ## Regras de arte
 - Só cores especiais com o nome exato da cartela PANTONE Solid Coated ("PANTONE 7426 C"). Preto é preto puro e aparece na ficha como "Pantone PRETO". Nada de CMYK/RGB na arte; retícula vira chapado.
 - Traço ou vazado abaixo de 0,15 mm e microtexto abaixo de uns 2 mm de altura são arriscados em papel seda: avisar.
-- Conferir sempre: passo x cilindro (330 primeiro; se ficou em 420, a justificativa está na entrega), motivos cortados na borda aparecem pela metade dos dois lados, nada de desenho cortado na emenda. No corte individual não há passo nem emenda: conferir o formato e a margem.
+- Conferir sempre: passo x cilindro (330 primeiro; se ficou em 420, a justificativa está na entrega), motivos cortados na borda aparecem pela metade dos dois lados (malha centralizada: corte de cima = corte de baixo, esquerda = direita), nada de desenho cortado na emenda. No corte individual não há passo nem emenda: conferir o formato e a margem.
 - Margem de 1 mm na largura (regra do usuário, 17/11/2026). No formato final, dentro do quadro (C x L):
   - a arte fica centralizada no quadro e termina a 1 mm da borda de cima e a 1 mm da borda de baixo. O desenho que passa dessas linhas é cortado reto nelas (corte de verdade na curva: não some nem muda de lugar);
   - nas laterais (esquerda e direita, sentido da máquina) não tem margem: a arte vai até a borda e é cortada nela;
@@ -33,6 +33,12 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
   - **espaçamento:** uns **35 mm** de borda a borda entre uma logo e a próxima, um pouco menor que os ~40 mm usados até agora;
   - esses valores são o ponto de partida: tamanho e espaçamento podem mudar um pouco para o passo fechar em 330 mm (ver a prioridade do cilindro). Diga na entrega os valores que ficaram (ângulo, tamanho da logo, espaçamento e passo) e cote o tamanho da logo e o espaçamento na ficha;
   - a partir da v2, siga o que o cliente aprovou ou pediu na versão anterior.
+- Arte distribuída no corte aleatório: centralizada e simétrica (regra do usuário, 18/11/2026). A estampa preenche a folha inteira, com a malha de motivos/logos centralizada no quadro (C x L):
+  - se um motivo é cortado na borda de cima, o corte correspondente aparece na borda de baixo, na mesma medida; o mesmo vale para a esquerda e a direita (começo e fim da folha, sentido da máquina);
+  - o centro da malha cai no centro da folha. Não começar a estampa encostada num canto, com motivos inteiros de um lado e cortados só do outro;
+  - em cima e embaixo, o corte é na linha da margem de 1 mm (ver "Margem de 1 mm na largura"), então a simetria é contada a partir dessas linhas;
+  - isso mostra ao cliente que, no corte aleatório, as logos são cortadas nas bordas. Na entrega, conferir visualmente a simetria (corte de cima = corte de baixo, esquerda = direita);
+  - se o pedido definir outra posição para a estampa, vale o pedido.
 - Arte a partir de imagem: se o motivo se repete na imagem, alinhar as cópias com precisão subpixel e tirar a média (fica mais nítido); separar as cores por desmistura linear (branco + tintas); contornar com marching squares e ajustar curvas Bézier (Schneider) com detecção de cantos. Conferir o desvio sobrepondo ao original e mostrar uma comparação ampliada.
 
 ## Padrão de entrega: PDF de 2 páginas
