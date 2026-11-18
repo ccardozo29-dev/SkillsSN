@@ -21,8 +21,8 @@ Skills do Claude da **Sol Nascente Papéis**, versionadas.
 - **MINOR**: regra nova ou função nova no `ficha.py`.
 - **PATCH**: correção, ajuste de texto, cor Pantone nova no `PANTONE_LAB`.
 
-Cada versão publicada recebe uma tag `<skill>/vX.Y.Z` (ex.: `arte-flexo-sol-nascente/v1.0.0`).
+Cada versão é um commit em `main` com a mensagem `<skill>: vX.Y.Z – resumo`. Para achar uma versão antiga, procure essa mensagem no histórico (ou crie um *Release* no GitHub a partir do commit, se quiser um ZIP fixo).
 
 ## Instalar no Claude
 
-Compacte a pasta da skill (`arte-flexo-sol-nascente/`) em ZIP e envie em *Configurações → Capacidades → Skills*, ou baixe o ZIP da tag pelo GitHub.
+Compacte a pasta da skill (`arte-flexo-sol-nascente/`) em ZIP e envie em *Configurações → Capacidades → Skills*, ou use *Code → Download ZIP* no GitHub e envie só a pasta da skill.

@@ -6,4 +6,4 @@ Este repositório guarda as skills da Sol Nascente Papéis. Sempre que uma skill
 2. Suba a versão em `<skill>/VERSION` seguindo o README (MAJOR / MINOR / PATCH).
 3. Registre a mudança no topo de `<skill>/CHANGELOG.md`, com data (dd/mm/aaaa) e o que mudou em português.
 4. Atualize a tabela do `README.md` se a descrição da skill mudou ou se entrou uma skill nova.
-5. Faça commit (`<skill>: vX.Y.Z – resumo`), crie a tag `<skill>/vX.Y.Z` e envie para `main` com as tags.
+5. Faça commit com a mensagem `<skill>: vX.Y.Z – resumo` e envie para `main` (sem tags: o envio de tags é bloqueado nas sessões do Claude).
