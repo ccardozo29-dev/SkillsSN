@@ -67,12 +67,138 @@ ficha.gerar('arte.pdf', ficha.nome_arquivo('Nico e Pippa', '30x70', 2),
 ```
 4. Cor Pantone nova: buscar o Lab D50 (Solid Coated) e passar `lab_extra={'PANTONE XXXX C': (L, a, b)}`. Sem isso a separação sai certa, mas a amostra na tela fica preta. Ao abrir o PDF, o Corel troca o Lab pelo da paleta dele: se o usuário devolver um PDF exportado do Corel, copiar o Lab da Separation para o `PANTONE_LAB` (foi assim com a 172 C).
 5. Arte ou módulo avulso (sem ficha): `ficha.limpar_pdf('entrada.pdf', 'saida.pdf')` regrava na estrutura que o Corel abre e já corta a margem de 1 mm (`margem=0` para não cortar). SVG por cor: `ficha.pdf_para_svg('saida.pdf', 0, 'saida.svg')`.
-6. Antes de entregar: renderizar as duas páginas e conferir medidas, nomes das cores, passo x cilindro e emenda; `pdffonts` deve sair vazio; `ficha.conferir_margem('saida.pdf')` tem que dar cima e baixo de 1,00 mm ou mais (`ok=True`); conferir na página 1 que a logomarca da Sol Nascente aparece no quadrado da esquerda do cabeçalho. Entregar o PDF (e o SVG por cor, se for montar no Corel).
+6. Antes de entregar: renderizar as duas páginas e conferir medidas, nomes das cores, passo x cilindro e emenda; `pdffonts` deve sair vazio; `ficha.conferir_margem('saida.pdf')` tem que dar cima e baixo de 1,00 mm ou mais (`ok=True`); conferir na página 1 que a logomarca da Sol Nascente aparece no quadrado da esquerda do cabeçalho. Gravar o PDF no Dropbox (ver "Guardar no Dropbox") e entregar o PDF (e o SVG por cor, se for montar no Corel).
+
+## Guardar no Dropbox (toda arte gerada)
+Regra do usuário (19/11/2026). Todo PDF de arte gerado (v1, v2, ... e cada correção) vai para o Dropbox logo depois de gerado e conferido, antes de entregar. Não depende de aprovação.
+1. Destino: `/SolNascente/Artes Clientes/<Nome da Arte>/<cliente_LxC_vN.pdf>`. A pasta leva só o nome da arte, como o usuário escreve, sem formato nem versão (ex.: `Van-Dal`, `Zini`, `Nacho Man 2026`). Se a pasta já existe (o Dropbox não diferencia maiúsculas), usar a existente; se não existe, criar.
+2. Pelo script `dropbox_artes.py` (abaixo), pela API HTTP do Dropbox. O conector do Dropbox no Claude não envia arquivos binários (só texto), então não serve para o PDF; ele serve para listar e conferir pastas.
+3. Credenciais: `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` e `DROPBOX_REFRESH_TOKEN` no documento privado do Projeto `claude/credenciais.md`, carregadas nas variáveis de ambiente. Nunca gravar em arquivo da skill nem do repositório, nem repetir na resposta. App do Dropbox "SolNascente-Claude" (Full Dropbox). Rede: `api.dropboxapi.com` e `content.dropboxapi.com` liberados pelo usuário.
+```python
+import dropbox_artes as dbx               # credenciais no ambiente
+r = dbx.salvar('van_dal_30x70_v2.pdf', 'Van-Dal')
+print(r['caminho'], r['pasta_criada'])
+```
+4. Se já existir um arquivo com o mesmo nome e conteúdo diferente, o script para: perguntar se é para substituir (`sobrescrever=True`) ou subir como nova versão. Arquivo idêntico passa sem erro.
+5. Na entrega, dizer numa linha onde o PDF ficou no Dropbox e se a pasta foi criada agora.
+
+## dropbox_artes.py
+```python
+"""Grava os PDFs das artes da Sol Nascente Papéis no Dropbox, em /SolNascente/Artes Clientes/<Nome da Arte>/.
+
+Pela API HTTP do Dropbox (o conector do Claude não envia arquivos binários). O arquivo vai direto do
+disco. Credenciais nas variáveis de ambiente DROPBOX_APP_KEY, DROPBOX_APP_SECRET e DROPBOX_REFRESH_TOKEN
+(nunca gravar em arquivo do repositório, que é público).
+
+Uso:
+    import dropbox_artes as dbx
+    r = dbx.salvar('van_dal_30x70_v2.pdf', 'Van-Dal')
+    print(r['caminho'], r['pasta_criada'])
+"""
+import json, os, re
+import requests
+
+BASE = '/SolNascente/Artes Clientes'
+API = 'https://api.dropboxapi.com/2'
+CONTENT = 'https://content.dropboxapi.com/2'
+
+
+class ErroDropbox(Exception):
+    pass
+
+
+_cache = {}
+
+
+def _token():
+    if 'token' in _cache:
+        return _cache['token']
+    try:
+        key, secret, refresh = (os.environ[k].strip() for k in
+                                ('DROPBOX_APP_KEY', 'DROPBOX_APP_SECRET', 'DROPBOX_REFRESH_TOKEN'))
+    except KeyError as e:
+        raise ErroDropbox(f'{e.args[0]} não definida: leia as credenciais do documento do Projeto.')
+    r = requests.post('https://api.dropboxapi.com/oauth2/token', timeout=60,
+                      data={'grant_type': 'refresh_token', 'refresh_token': refresh},
+                      auth=(key, secret))
+    d = r.json()
+    if 'access_token' not in d:
+        raise ErroDropbox(f'token: {d}')
+    _cache['token'] = d['access_token']
+    return _cache['token']
+
+
+def _hdr(extra=None):
+    h = {'Authorization': f'Bearer {_token()}'}
+    if 'raiz' not in _cache:                     # conta de equipe: caminhos a partir da raiz da equipe
+        r = requests.post(f'{API}/users/get_current_account', headers=h, timeout=60).json()
+        _cache['raiz'] = r.get('root_info', {}).get('root_namespace_id')
+    if _cache['raiz']:
+        h['Dropbox-API-Path-Root'] = json.dumps({'.tag': 'root', 'root': _cache['raiz']})
+    h.update(extra or {})
+    return h
+
+
+def _rpc(rota, corpo):
+    r = requests.post(f'{API}/{rota}', headers=_hdr({'Content-Type': 'application/json'}),
+                      data=json.dumps(corpo), timeout=60)
+    try:
+        d = r.json()
+    except ValueError:
+        d = {'erro': r.text[:300]}
+    return r.status_code, d
+
+
+def nome_pasta(nome_arte):
+    """Nome da arte como o usuário escreve, sem formato nem versão; tira só o que o Dropbox não aceita."""
+    n = re.sub(r'[\\/:*?"<>|]', '', nome_arte).strip().rstrip('.')
+    if not n:
+        raise ErroDropbox('nome da arte vazio')
+    return n
+
+
+def pasta(nome_arte):
+    """Garante a pasta da arte. Devolve (caminho, criada). Usa a pasta existente com o mesmo nome
+    (o Dropbox não diferencia maiúsculas)."""
+    p = f'{BASE}/{nome_pasta(nome_arte)}'
+    st, d = _rpc('files/get_metadata', {'path': p})
+    if st == 200:
+        if d.get('.tag') != 'folder':
+            raise ErroDropbox(f'{p} existe mas não é pasta')
+        return d.get('path_display', p), False
+    if 'not_found' not in json.dumps(d):
+        raise ErroDropbox(f'get_metadata: {d}')
+    st, d = _rpc('files/create_folder_v2', {'path': p, 'autorename': False})
+    if st != 200:
+        raise ErroDropbox(f'create_folder: {d}')
+    return d['metadata']['path_display'], True
+
+
+def salvar(pdf, nome_arte, sobrescrever=False):
+    """Grava o PDF em /SolNascente/Artes Clientes/<nome da arte>/<arquivo>. Se já existir um arquivo com o
+    mesmo nome, para (ou substitui com sobrescrever=True). Devolve dict(caminho, pasta, pasta_criada, tamanho)."""
+    dest, criada = pasta(nome_arte)
+    alvo = f'{dest}/{os.path.basename(pdf)}'
+    arg = {'path': alvo, 'mode': 'overwrite' if sobrescrever else 'add', 'autorename': False, 'mute': False}
+    with open(pdf, 'rb') as fh:
+        r = requests.post(f'{CONTENT}/files/upload', timeout=600, data=fh,
+                          headers=_hdr({'Content-Type': 'application/octet-stream',
+                                        'Dropbox-API-Arg': json.dumps(arg, ensure_ascii=True)}))
+    try:
+        d = r.json()
+    except ValueError:
+        raise ErroDropbox(f'upload: HTTP {r.status_code} {r.text[:300]}')
+    if r.status_code != 200:
+        if 'conflict' in json.dumps(d):
+            raise ErroDropbox(f'{alvo} já existe: confirme com o usuário se é para substituir (sobrescrever=True).')
+        raise ErroDropbox(f'upload: {d}')
+    return dict(caminho=d.get('path_display', alvo), pasta=dest, pasta_criada=criada, tamanho=d.get('size'))
+```
 
 ## Publicar no tiiny.host (só depois da aprovação)
 Regra do usuário (19/11/2026). O usuário avalia a arte e só publica quando disser para publicar ("pode publicar", "aprovado, publica"). Nunca publicar sem essa ordem, nem a primeira versão.
 1. Publicar pela **API v3 com o script `publicar_tiiny.py`** (abaixo), que manda o PDF direto do disco para o tiiny.host. Não usar o `publish_site` do conector Tiiny Host para PDF: ele exige o arquivo inteiro em base64 dentro da chamada, o que não cabe para arquivos reais. O conector serve para `list_sites` e `delete_site`.
-2. **Chave de API:** fica no documento privado do Projeto "Artes SN" `claude/tiiny-api-key.md` (ler com `project_read`) e entra no script pela variável de ambiente `TIINY_API_KEY`. Nunca gravar a chave em arquivo da skill nem do repositório (o SkillsSN é público), nem repetir a chave na resposta. Se o documento não existir, pedir a chave ao usuário.
+2. **Chave de API:** fica no documento privado do Projeto "Artes SN" `claude/credenciais.md` (ler com `project_read`) e entra no script pela variável de ambiente `TIINY_API_KEY`. Nunca gravar a chave em arquivo da skill nem do repositório (o SkillsSN é público), nem repetir a chave na resposta. Se o documento não existir, pedir a chave ao usuário.
 3. Rede: os hosts `api.tiiny.host` e `ext.tiiny.host` foram liberados pelo usuário (19/11/2026). Se der erro 403 no CONNECT, avisar que a liberação não está valendo nesta conversa.
 4. Salvar o script como `publicar_tiiny.py` e rodar com o PDF aprovado (o `cliente_LxC_vN.pdf` inteiro, ficha + arte):
 ```python

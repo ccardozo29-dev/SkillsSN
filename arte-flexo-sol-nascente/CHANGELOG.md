@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.6.0 – 19/11/2026
+- Toda arte gerada é gravada no Dropbox em `/SolNascente/Artes Clientes/<Nome da Arte>/` (pasta só com o nome da arte; criada se não existir), pelo novo script `dropbox_artes.py` (API HTTP do Dropbox; o conector não envia binários). Testado: criar pasta, gravar, usar pasta existente e bloquear substituição sem confirmação.
+- Credenciais (tiiny.host e Dropbox) reunidas no documento privado do Projeto `claude/credenciais.md`.
+
 ## v1.5.0 – 19/11/2026
 - Publicação no tiiny.host passa a ser pela API v3 com o novo script `publicar_tiiny.py` (embutido na skill): o PDF vai direto do disco, sem base64 na conversa. Testado com publicar, atualizar e apagar.
 - Downloads desativados automaticamente (`disableExportPdf: true`), conferido após a publicação.
