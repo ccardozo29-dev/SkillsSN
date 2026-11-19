@@ -69,6 +69,15 @@ ficha.gerar('arte.pdf', ficha.nome_arquivo('Nico e Pippa', '30x70', 2),
 5. Arte ou módulo avulso (sem ficha): `ficha.limpar_pdf('entrada.pdf', 'saida.pdf')` regrava na estrutura que o Corel abre e já corta a margem de 1 mm (`margem=0` para não cortar). SVG por cor: `ficha.pdf_para_svg('saida.pdf', 0, 'saida.svg')`.
 6. Antes de entregar: renderizar as duas páginas e conferir medidas, nomes das cores, passo x cilindro e emenda; `pdffonts` deve sair vazio; `ficha.conferir_margem('saida.pdf')` tem que dar cima e baixo de 1,00 mm ou mais (`ok=True`); conferir na página 1 que a logomarca da Sol Nascente aparece no quadrado da esquerda do cabeçalho. Entregar o PDF (e o SVG por cor, se for montar no Corel).
 
+## Publicar no tiiny.host (só depois da aprovação)
+Regra do usuário (19/11/2026). O usuário avalia a arte e só publica quando disser para publicar ("pode publicar", "aprovado, publica"). Nunca publicar sem essa ordem, nem a primeira versão.
+1. Publicar pelo **conector Tiiny Host** do Claude (servidor `https://mcp.tiiny.host`, autenticado na conta da Sol Nascente). Não usar chave de API: ela não fica nesta skill nem no repositório (que é público) e a API é bloqueada no ambiente do Claude. Se as ferramentas do conector não aparecerem na conversa, avisar o usuário para adicionar o conector em Configurações → Conectores e não publicar por outro caminho sem ele pedir.
+2. Criar um projeto novo com o **PDF entregue** (o `cliente_LxC_vN.pdf` aprovado, o arquivo inteiro, ficha + arte).
+3. Nome do link: título da arte + formato + versão, tudo em minúsculas, sem espaços, acentos ou símbolos: `ficha.nome_link(nome, formato, versao)`. Ex.: "Nome da Arte" 50x70 v1 → `nomedaarte50x70v1`. Use o título completo da arte, sem abreviar.
+4. **Desativar os downloads** do PDF (Disable PDF Downloads / download e impressão desligados). Se o conector não tiver essa opção, publicar e avisar o usuário que precisa ligar no painel do tiiny.host: ícone Update do projeto → Customize project → Access gate → Disable PDF Downloads → Publish.
+5. Se o nome já existir (ex.: uma v1 republicada), não inventar outro nome: perguntar se é para atualizar o projeto existente ou criar com outra versão.
+6. Devolver ao usuário só o link final que o tiiny.host retornou (o sufixo do domínio é o que ele der, normalmente `.tiiny.site`), numa linha fácil de copiar, para ele repassar à área solicitante. Dizer se os downloads ficaram desativados.
+
 ## ficha.py
 ```python
 """Gerador de PDF no padrão Sol Nascente Papéis.
@@ -299,6 +308,12 @@ def slug(s):
 
 def nome_arquivo(nome, formato, versao):
     return f"{slug(nome)}_{formato.lower()}_v{int(versao)}.pdf"
+
+
+def nome_link(nome, formato, versao):
+    """Subdomínio do tiiny.host: título + formato + versão, minúsculas, sem espaços nem símbolos.
+    Ex.: nome_link('Nico e Pippa', '50x70', 1) -> 'nicoepippa50x70v1'."""
+    return re.sub(r'[^a-z0-9]', '', slug(nome)) + formato.lower().replace(' ', '') + f'v{int(versao)}'
 
 
 def fmt_mm(v):

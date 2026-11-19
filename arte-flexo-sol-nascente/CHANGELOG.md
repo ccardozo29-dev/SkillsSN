@@ -1,5 +1,10 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.4.0 – 19/11/2026
+- Nova etapa: publicar no tiiny.host só depois da aprovação do usuário, pelo conector Tiiny Host (sem chave de API na skill).
+- Projeto com o PDF aprovado, downloads desativados e link no padrão `nomedaarte50x70v1` (título completo + formato + versão, minúsculas, sem espaços).
+- Nova função `ficha.nome_link()` para montar o nome do link.
+
 ## v1.3.0 – 18/11/2026
 - Nova regra para arte distribuída no corte aleatório: malha de motivos/logos centralizada na folha, com cortes simétricos (corte de cima = corte de baixo, esquerda = direita), mostrando ao cliente que as logos são cortadas nas bordas.
 - Item de conferência atualizado para checar essa simetria.
