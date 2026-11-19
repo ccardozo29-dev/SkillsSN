@@ -1,5 +1,11 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.5.0 – 19/11/2026
+- Publicação no tiiny.host passa a ser pela API v3 com o novo script `publicar_tiiny.py` (embutido na skill): o PDF vai direto do disco, sem base64 na conversa. Testado com publicar, atualizar e apagar.
+- Downloads desativados automaticamente (`disableExportPdf: true`), conferido após a publicação.
+- O script checa nome repetido, limite de projetos e tamanho do arquivo antes de enviar.
+- Chave de API fora do repositório: documento privado do Projeto "Artes SN" (`claude/tiiny-api-key.md`), lida para a variável `TIINY_API_KEY`.
+
 ## v1.4.1 – 19/11/2026
 - Conector Tiiny Host testado: ferramentas `list_sites`, `publish_site`, `update_site` e `delete_site` documentadas na skill.
 - Antes de publicar, `list_sites` para checar nome repetido e o limite de projetos do plano.

@@ -71,15 +71,126 @@ ficha.gerar('arte.pdf', ficha.nome_arquivo('Nico e Pippa', '30x70', 2),
 
 ## Publicar no tiiny.host (só depois da aprovação)
 Regra do usuário (19/11/2026). O usuário avalia a arte e só publica quando disser para publicar ("pode publicar", "aprovado, publica"). Nunca publicar sem essa ordem, nem a primeira versão.
-1. Publicar pelo **conector Tiiny Host** do Claude (servidor `https://mcp.tiiny.host`, autenticado na conta da Sol Nascente). Não usar chave de API: ela não fica nesta skill nem no repositório (que é público) e a API é bloqueada no ambiente do Claude. Se as ferramentas do conector não aparecerem na conversa, avisar o usuário para adicionar o conector em Configurações → Conectores e não publicar por outro caminho sem ele pedir.
-   - Ferramentas do conector: `list_sites` (lista os projetos), `publish_site` (cria: `fileName`, `fileContentBase64` com o PDF em base64 e `domain` = `<nome>.tiiny.site`), `update_site` (substitui o arquivo de um projeto existente; confirmar com o usuário antes) e `delete_site` (só com pedido explícito).
-   - Antes de publicar, rodar `list_sites`: confere se o nome já existe e o limite de projetos do plano (em 19/11/2026 a conta tinha 1005 projetos para um limite de 999). Se o limite estiver estourado, avisar o usuário antes de tentar; não apagar projetos antigos por conta própria.
-   - Se o `publish_site` não responder com certeza, rodar `list_sites` antes de tentar de novo, para não criar projeto duplicado.
-2. Criar um projeto novo com o **PDF entregue** (o `cliente_LxC_vN.pdf` aprovado, o arquivo inteiro, ficha + arte).
-3. Nome do link: título da arte + formato + versão, tudo em minúsculas, sem espaços, acentos ou símbolos: `ficha.nome_link(nome, formato, versao)`. Ex.: "Nome da Arte" 50x70 v1 → `nomedaarte50x70v1`. Use o título completo da arte, sem abreviar.
-4. **Desativar os downloads** do PDF (Disable PDF Downloads / download e impressão desligados). O conector não tem essa opção (testado em 19/11/2026): publicar e avisar o usuário que precisa ligar no painel do tiiny.host: ícone Update do projeto → Customize project → Access gate → Disable PDF Downloads → Publish.
-5. Se o nome já existir (ex.: uma v1 republicada), não inventar outro nome: perguntar se é para atualizar o projeto existente ou criar com outra versão.
-6. Devolver ao usuário só o link final que o tiiny.host retornou (o sufixo do domínio é o que ele der, normalmente `.tiiny.site`), numa linha fácil de copiar, para ele repassar à área solicitante. Dizer se os downloads ficaram desativados.
+1. Publicar pela **API v3 com o script `publicar_tiiny.py`** (abaixo), que manda o PDF direto do disco para o tiiny.host. Não usar o `publish_site` do conector Tiiny Host para PDF: ele exige o arquivo inteiro em base64 dentro da chamada, o que não cabe para arquivos reais. O conector serve para `list_sites` e `delete_site`.
+2. **Chave de API:** fica no documento privado do Projeto "Artes SN" `claude/tiiny-api-key.md` (ler com `project_read`) e entra no script pela variável de ambiente `TIINY_API_KEY`. Nunca gravar a chave em arquivo da skill nem do repositório (o SkillsSN é público), nem repetir a chave na resposta. Se o documento não existir, pedir a chave ao usuário.
+3. Rede: os hosts `api.tiiny.host` e `ext.tiiny.host` foram liberados pelo usuário (19/11/2026). Se der erro 403 no CONNECT, avisar que a liberação não está valendo nesta conversa.
+4. Salvar o script como `publicar_tiiny.py` e rodar com o PDF aprovado (o `cliente_LxC_vN.pdf` inteiro, ficha + arte):
+```python
+import publicar_tiiny as tiiny        # TIINY_API_KEY no ambiente
+r = tiiny.publicar('nome_da_arte_50x70_v1.pdf', 'Nome da Arte', '50x70', 1)
+print(r['link'], r['download_desativado'])     # https://nomedaarte50x70v1.tiiny.site True
+```
+   - Nome do link: título completo da arte + formato + versão, minúsculas, sem espaços, acentos ou símbolos (`nome_link()`; ex.: "Nome da Arte" 50x70 v1 → `nomedaarte50x70v1`), sempre em `.tiiny.site`.
+   - **Downloads desativados** pela configuração `disableExportPdf: true` (a mesma do botão "Disable PDF Downloads"); o script confere depois e devolve `download_desativado`.
+   - Antes de enviar, o script confere o limite de projetos do plano (999 em 19/11/2026) e o tamanho máximo do arquivo (10 MB). Se o limite estiver estourado, avisar o usuário; não apagar projetos antigos sem pedido explícito e sem ele aprovar a lista.
+   - Se o nome já existe, o script para. Perguntar se é para atualizar aquele projeto (`atualizar=True`, troca o arquivo e mantém o link) ou publicar com outra versão.
+5. Devolver ao usuário o link numa linha fácil de copiar, para ele repassar à área solicitante, e dizer se os downloads ficaram desativados.
+
+## publicar_tiiny.py
+```python
+"""Publica no tiiny.host o PDF aprovado de uma arte da Sol Nascente Papéis, pela API v3.
+
+O arquivo vai direto do disco para a API (sem base64 na conversa). Chave de API: variável de
+ambiente TIINY_API_KEY (nunca gravar a chave em arquivo do repositório, que é público).
+
+Uso:
+    import publicar_tiiny as tiiny
+    r = tiiny.publicar('nome_da_arte_50x70_v1.pdf', 'Nome da Arte', '50x70', 1)
+    print(r['link'])          # https://nomedaarte50x70v1.tiiny.site
+"""
+import json, os, re, unicodedata
+import requests
+
+API = 'https://api.tiiny.host/v3/external/pub'
+SUFIXO = '.tiiny.site'
+UA = {'user-agent': 'n8n'}        # a API recusa o user-agent padrão em algumas rotas
+
+
+class ErroTiiny(Exception):
+    pass
+
+
+def _chave():
+    k = os.environ.get('TIINY_API_KEY', '').strip()
+    if not k:
+        raise ErroTiiny('TIINY_API_KEY não definida: peça a chave de API do tiiny.host ao usuário.')
+    return k
+
+
+def _hdr():
+    return {'X-Api-Key': _chave(), **UA}
+
+
+def nome_link(nome, formato, versao):
+    """Título + formato + versão, minúsculas, sem espaços nem símbolos: 'Nome da Arte', '50x70', 1 -> nomedaarte50x70v1."""
+    s = unicodedata.normalize('NFKD', nome).encode('ascii', 'ignore').decode().lower()
+    return re.sub(r'[^a-z0-9]', '', s) + re.sub(r'[^a-z0-9]', '', formato.lower()) + f'v{int(versao)}'
+
+
+def perfil():
+    r = requests.post(f'{API}/profile', headers=_hdr(), timeout=60)
+    d = r.json()
+    if not d.get('success'):
+        raise ErroTiiny(f'perfil: {d}')
+    return d['profile']
+
+
+def situacao():
+    """Quantos projetos a conta tem, o limite do plano e os subdomínios existentes."""
+    p = perfil()
+    links = p.get('links', [])
+    return dict(projetos=len(links), limite=p.get('maxLinks'), max_mb=(p.get('maxFileSize') or 0) / 1000,
+                dominios={l.get('subdomain') for l in links})
+
+
+def site(dominio):
+    r = requests.get(f'{API}/get-site', headers=_hdr(), params={'domain': dominio}, timeout=60)
+    d = r.json()
+    return d.get('link') if 'link' in d else None
+
+
+def publicar(pdf, nome, formato, versao, desativar_download=True, atualizar=False):
+    """Cria o projeto <nome_link>.tiiny.site com o PDF. Se o nome já existe, só substitui com atualizar=True.
+    Devolve dict(link, dominio, download_desativado, resposta)."""
+    sub = nome_link(nome, formato, versao)
+    dominio = sub + SUFIXO
+    st = situacao()
+    existe = dominio in st['dominios']
+    if existe and not atualizar:
+        raise ErroTiiny(f'{dominio} já existe: confirme com o usuário se é para atualizar (atualizar=True).')
+    if not existe and st['limite'] and st['projetos'] >= st['limite']:
+        raise ErroTiiny(f"limite de projetos atingido ({st['projetos']}/{st['limite']}): avise o usuário.")
+    mb = os.path.getsize(pdf) / 1e6
+    if st['max_mb'] and mb > st['max_mb']:
+        raise ErroTiiny(f"PDF com {mb:.1f} MB passa do limite do plano ({st['max_mb']:.0f} MB).")
+    dados = {'domain': dominio, 'domainSuffix': SUFIXO,
+             'siteSettings': json.dumps({'passwordProtected': False, 'password': '',
+                                         'disableExportPdf': bool(desativar_download)})}
+    if existe:
+        atual = requests.get(f'{API}/get-site', headers=_hdr(), params={'domain': dominio}, timeout=60).json()
+        dados['isUpdate'] = 'true'
+        rem = [json.dumps({'id': f['id'], 'size': f['size']}) for f in atual.get('files', [])]
+        if rem:
+            dados['filesToRemove'] = rem
+    with open(pdf, 'rb') as fh:
+        r = requests.post(f'{API}/upload', headers=_hdr(), data=dados,
+                          files={'filesToAdd': (os.path.basename(pdf), fh, 'application/pdf')}, timeout=300)
+    try:
+        resp = r.json()
+    except ValueError:
+        raise ErroTiiny(f'upload: HTTP {r.status_code} {r.text[:300]}')
+    if r.status_code >= 400 or resp.get('success') is False:
+        raise ErroTiiny(f'upload: HTTP {r.status_code} {resp}')
+    info = site(dominio) or {}
+    return dict(link=f'https://{dominio}', dominio=dominio,
+                download_desativado=info.get('disableExportPdf'), resposta=resp)
+
+
+def apagar(dominio):
+    """Só com pedido explícito do usuário."""
+    r = requests.post(f'{API}/delete', headers=_hdr(), json={'link': dominio}, timeout=60)
+    return r.json()
+```
 
 ## ficha.py
 ```python
