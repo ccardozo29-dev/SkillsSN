@@ -1,5 +1,10 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.4.1 – 19/11/2026
+- Conector Tiiny Host testado: ferramentas `list_sites`, `publish_site`, `update_site` e `delete_site` documentadas na skill.
+- Antes de publicar, `list_sites` para checar nome repetido e o limite de projetos do plano.
+- O conector não desativa downloads: o usuário liga "Disable PDF Downloads" no painel depois da publicação.
+
 ## v1.4.0 – 19/11/2026
 - Nova etapa: publicar no tiiny.host só depois da aprovação do usuário, pelo conector Tiiny Host (sem chave de API na skill).
 - Projeto com o PDF aprovado, downloads desativados e link no padrão `nomedaarte50x70v1` (título completo + formato + versão, minúsculas, sem espaços).
