@@ -212,7 +212,7 @@ Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, 
 5. Resultado: **APROVAR**, **CONFIRMAR ANTES** (itens a confirmar com a clicheria ou o comercial) ou **NÃO APROVAR** (o que pedir para corrigir), com uma tabela curta. Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se o resultado for diferente).
 6. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
 
-### Rotina agendada (seg a sex, 8h às 18h, a cada 30 min)
+### Rotina agendada (seg a sex, 8h às 18h, de hora em hora)
 Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), registrar no documento e notificar o usuário com o resultado. Sem pedido novo: terminar sem notificar.
 
 Para usar os scripts numa sessão nova, extrair os blocos de código das skills (fonte: repositório público `github.com/ccardozo29-dev/SkillsSN`):

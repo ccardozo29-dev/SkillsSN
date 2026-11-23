@@ -1,5 +1,8 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.1 – 23/11/2026
+- Rotina agendada de verificação passa a rodar de hora em hora (8h às 18h, seg a sex): o mínimo das tarefas agendadas é 1 hora.
+
 ## v1.7.0 – 23/11/2026
 - Novo roteiro "Verificar a prova da clicheria": compara a prova da clicheria (Arte Clicheria) com a nossa arte (Arte Vetorial, PDF ou CDR) e diz se pode aprovar o clichê (tamanho, cores, elementos, espelhamento, peso de traço e fonte, margem, emenda, quadro de informações).
 - Novo script `verificar_prova.py` (baixa do TeamDesk, converte CDR, acha o quadro da prova, sobrepõe e mede). Validado nos pedidos 23496 (ok), 23492 (ok, com campos a confirmar) e 23337 (fonte refeita, não aprovar).
