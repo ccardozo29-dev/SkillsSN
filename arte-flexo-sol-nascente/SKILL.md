@@ -195,6 +195,306 @@ def salvar(pdf, nome_arte, sobrescrever=False):
     return dict(caminho=d.get('path_display', alvo), pasta=dest, pasta_criada=criada, tamanho=d.get('size'))
 ```
 
+## Verificar a prova da clicheria (antes de aprovar o clichê)
+Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, Cortsinos) refaz a nossa arte para gravar o clichê e manda uma prova (JPG a 300 dpi, quadro do módulo + quadro de informações). Antes de o usuário aprovar, comparar a prova (`Arte Clicheria` do pedido no TeamDesk) com a nossa arte (`Arte Vetorial`: PDF do padrão ou CDR) e dizer se pode aprovar.
+1. Baixar com `verificar_prova.baixar(pedido, pasta)` (usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
+2. `quadro()` acha o módulo na prova; `info()` recorta o quadro de informações: **ler** cores, tamanho, área impressa, modo de impressão, substrato, cilindro/fechamento, pistas x imagens.
+3. `mascara_prova()` + `nossa_pdf()` + `comparar()` (`periodo=True` no corte aleatório: a prova é um módulo que se repete; `periodo=False` no corte individual). Olhar a sobreposição (`recortes()` para ampliar): cinza = igual, vermelho = só na nossa, azul = só na prova. Franjas de 1 px são normais (JPG). As legendas e cotas da prova podem aparecer em azul.
+4. Conferir e relatar, item por item:
+   - tamanho do módulo = largura x fechamento do pedido (330 ou 420 no corte aleatório; folha inteira no corte individual) e o que o quadro de informações diz;
+   - cor(es) e quantidade = as da ficha e as do item no TeamDesk (avisar divergência no cadastro, ex. item "PRETO" e arte Pantone 476 C);
+   - todos os elementos presentes, sem sobrar nada (`faltando_na_prova` / `sobrando_na_prova` vazios), mesma posição, sem espelhamento (`orientacao` sem `_espelho`);
+   - mesmo peso de traço e mesma fonte: `tinta_prova_mm2` perto de `tinta_nossa_mm2` (diferença acima de uns 15% = olhar de perto; no 23337 a prova tinha ~58% da tinta: textos refeitos com outra fonte → não aprovar);
+   - margem de 1 mm na largura (área impressa = largura − 2 mm quando a arte vai até a borda);
+   - emenda: no corte aleatório, nenhum elemento cortado na emenda (tinta da prova começa e termina com folga nas pontas do fechamento);
+   - campos do quadro de informações: modo de impressão **Externa** (papel; "Interna" costuma ser espelhado: confirmar), cilindro/fechamento coerente com o pedido, campos "xxx" ou em branco (só observar);
+   - traços e textos muito finos (abaixo de ~0,15 mm) e afinamento ou engrossamento feito pela clicheria.
+5. Resultado: **APROVAR**, **CONFIRMAR ANTES** (itens a confirmar com a clicheria ou o comercial) ou **NÃO APROVAR** (o que pedir para corrigir), com uma tabela curta. Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se o resultado for diferente).
+6. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
+
+### Rotina agendada (seg a sex, 8h às 18h, a cada 30 min)
+Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), registrar no documento e notificar o usuário com o resultado. Sem pedido novo: terminar sem notificar.
+
+Para usar os scripts numa sessão nova, extrair os blocos de código das skills (fonte: repositório público `github.com/ccardozo29-dev/SkillsSN`):
+```python
+import re
+def extrair(skill_md, titulo, destino):
+    s = open(skill_md, encoding='utf-8').read()
+    i = s.index('## ' + titulo); bloco = re.search(r'```python\n(.*?)```', s[i:], re.S).group(1)
+    open(destino, 'w', encoding='utf-8').write(bloco)
+extrair('SkillsSN/teamdesk-sol-nascente/SKILL.md', 'teamdesk.py', 'teamdesk.py')
+extrair('SkillsSN/arte-flexo-sol-nascente/SKILL.md', 'verificar_prova.py', 'verificar_prova.py')
+```
+
+## verificar_prova.py
+```python
+"""Verificação da prova da clicheria contra a nossa arte vetorial (Sol Nascente Papéis).
+
+Ferramentas para o roteiro "Verificar prova da clicheria" da skill. Gera medidas e imagens; a decisão
+(aprovar ou não) é de quem verifica, olhando as imagens.
+
+    import verificar_prova as vp
+    d = vp.baixar('I202611-23496', 'pedido_23496')        # dados do pedido + anexos (usa teamdesk.py)
+    nossa = vp.nossa_pdf(d['vetorial'])                    # PDF da ficha (pág. 2) ou CDR convertido
+    q = vp.quadro(d['clicheria'])                          # quadro do módulo na prova (px) e tamanho em mm
+    vp.info(d['clicheria'], q, 'pedido_23496/info')        # recortes do quadro de informações para ler
+    prova = vp.mascara_prova(d['clicheria'], q)            # tinta da prova, 4 px/mm
+    r = vp.comparar(prova, nossa, 'pedido_23496/sobreposicao.png')
+"""
+import glob, os, re, subprocess
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+
+Image.MAX_IMAGE_PIXELS = None
+R = 4                      # resolução de trabalho: 4 px/mm
+
+
+# ---------------------------------------------------------------- pedido e anexos
+def baixar(pedido, pasta):
+    """Lê o pedido no TeamDesk e baixa Arte Vetorial, Arte Clicheria e Arte Aprovada para `pasta`."""
+    import teamdesk as td
+    os.makedirs(pasta, exist_ok=True)
+    cols = ['Pedido #', 'Empresa', 'Referência da Arte', 'Arte', 'Fechamento', 'Cores', 'Corte', 'Largura',
+            'Clicheria', 'Clichê aprovado', 'Clichê recebido', 'Notas Clicheria', 'Observações', 'Etapa',
+            'Previsão', 'Arte Vetorial', 'Arte Clicheria', 'Arte Aprovada']
+    p = td.registro('Pedido', pedido, cols)
+    itens = td.consultar('Item', ['Id', 'Produto', 'Formato', 'Substrato', 'Cores', 'Qtd', 'Unid'],
+                         filtro=f'[Pedido]="{pedido}"')
+    out = dict(pedido=p, itens=itens)
+    for col, chave in (('Arte Vetorial', 'vetorial'), ('Arte Clicheria', 'clicheria'), ('Arte Aprovada', 'aprovada')):
+        v = p.get(col)
+        if v:
+            nome = v.split(';')[0]
+            out[chave] = td.anexo('Pedido', col, pedido, os.path.join(pasta, f'{chave}_{nome}'))
+            out[chave + '_rev'] = v.split(';')[1] if v.count(';') >= 1 else '1'
+    return out
+
+
+# ---------------------------------------------------------------- nossa arte
+def _cdr_para_pdf(cdr):
+    pasta = os.path.dirname(os.path.abspath(cdr))
+    tmp = os.path.join(pasta, 'vet.cdr')
+    if os.path.abspath(cdr) != tmp:
+        subprocess.run(['cp', cdr, tmp], check=True)
+    subprocess.run(['soffice', '--headless', '--convert-to', 'pdf', '--outdir', pasta, tmp],
+                   check=True, capture_output=True, timeout=300)
+    return os.path.join(pasta, 'vet.pdf')
+
+
+def _limpar(pdf_in, pdf_out, recolorir_branco=True):
+    """Tira retângulos do tamanho da página (fundo) e pinta de preto o que é branco (tinta branca)."""
+    import pikepdf
+    pdf = pikepdf.open(pdf_in)
+    K = 25.4 / 72
+    for pg in pdf.pages:
+        mb = [float(v) for v in pg.MediaBox]
+        pw, ph = (mb[2] - mb[0]) * K, (mb[3] - mb[1]) * K
+        out, cur, pts = [], [], []
+        for x in pikepdf.parse_content_stream(pg):
+            if isinstance(x, pikepdf.ContentStreamInlineImage):
+                out.append(x); continue
+            op = str(x.operator)
+            if recolorir_branco and op in ('rg', 'g', 'k') and \
+                    [round(float(v), 3) for v in x.operands] in ([1, 1, 1], [1], [0, 0, 0, 0]):
+                x = pikepdf.ContentStreamInstruction([0, 0, 0], pikepdf.Operator('rg'))
+            if op in ('m', 'l', 'c', 'v', 'y', 'h', 're'):
+                o = [float(v) for v in x.operands]
+                cur.append(x)
+                pts += [(o[0], o[1]), (o[0] + o[2], o[1] + o[3])] if op == 're' else list(zip(o[0::2], o[1::2]))
+                continue
+            if op in ('W', 'W*'):
+                cur.append(x); continue
+            if op in ('f', 'F', 'f*', 'S', 's', 'B', 'B*', 'b', 'b*', 'n'):
+                xs = [p[0] for p in pts] or [0]; ys = [p[1] for p in pts] or [0]
+                w, h = (max(xs) - min(xs)) * K, (max(ys) - min(ys)) * K
+                if op != 'n' and w > pw * 0.97 and h > ph * 0.97:
+                    cur, pts = [], []; continue
+                out += cur + [x]; cur, pts = [], []; continue
+            out.append(x)
+        pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(out))
+    pdf.save(pdf_out)
+    return pdf_out
+
+
+def nossa_pdf(arquivo, pagina=2, recorte_mm=None, branco=None):
+    """Máscara (bool, 4 px/mm) da tinta da nossa arte. arquivo: PDF do padrão Sol Nascente (pág. 2 = arte) ou CDR.
+    recorte_mm=(x, y, w, h) recorta a área da arte na página (CDR convertido costuma ter a arte no canto
+    superior esquerdo de uma página maior). branco=True: arte em tinta branca (pinta de preto para enxergar);
+    None = automático (detecta página toda branca)."""
+    pdf = _cdr_para_pdf(arquivo) if arquivo.lower().endswith('.cdr') else arquivo
+    pasta = os.path.dirname(os.path.abspath(pdf))
+    limpo = _limpar(pdf, os.path.join(pasta, 'nossa_limpa.pdf'), recolorir_branco=True if branco is None else branco)
+    base = os.path.join(pasta, 'nossa_r4')
+    subprocess.run(['pdftoppm', '-r', str(R * 25.4), '-f', str(pagina), '-l', str(pagina), '-gray', '-png',
+                    limpo, base], check=True)
+    img = sorted(glob.glob(base + '*.png'))[-1]
+    a = np.array(Image.open(img).convert('L'))
+    m = a < 128
+    if recorte_mm:
+        x, y, w, h = (int(round(v * R)) for v in recorte_mm)
+        m = m[y:y + h, x:x + w]
+    return m
+
+
+# ---------------------------------------------------------------- prova da clicheria
+def quadro(prova):
+    """Localiza o quadro do módulo (linha escura grossa) na prova JPG a 300 dpi. Devolve dict com o
+    recorte interno em px e o tamanho em mm (largura horizontal x altura vertical da imagem)."""
+    g = np.array(Image.open(prova).convert('L')).astype(int)
+    dark = g < 80
+    H, W = dark.shape
+    px = 300 / 25.4
+    linhas = np.where(dark.sum(1) > W * 0.35)[0]
+
+    def grupos(v):
+        gs, ini = [], v[0]
+        for a, b in zip(v[:-1], v[1:]):
+            if b - a > 3:
+                gs.append((ini, a)); ini = b
+        gs.append((ini, v[-1]))
+        return gs
+    gl = grupos(linhas)
+    # pares de linhas horizontais: o módulo é o maior intervalo entre duas linhas fortes
+    pares = [(gl[i], gl[j]) for i in range(len(gl)) for j in range(i + 1, len(gl))]
+    melhor = None
+    for (a, b) in pares:
+        y0, y1 = a[1] + 1, b[0] - 1
+        if y1 - y0 < 50 * px:
+            continue
+        faixa = dark[y0:y1]
+        colunas = np.where(faixa.sum(0) > (y1 - y0) * 0.9)[0]
+        if len(colunas) < 2:
+            continue
+        gc = grupos(colunas)
+        if len(gc) < 2:
+            continue
+        x0, x1 = gc[0][1] + 1, gc[1][0] - 1          # as duas primeiras linhas verticais que cruzam a faixa
+        area = (x1 - x0) * (y1 - y0)
+        if melhor is None or area > melhor[0]:
+            melhor = (area, x0, x1, y0, y1)
+    _, x0, x1, y0, y1 = melhor
+    x0, x1, y0, y1 = int(x0), int(x1), int(y0), int(y1)
+    return dict(x0=x0, x1=x1, y0=y0, y1=y1, larg_mm=round((x1 - x0) / px, 2), alt_mm=round((y1 - y0) / px, 2))
+
+
+def info(prova, q, prefixo):
+    """Recorta o quadro de informações da Clicheart (fora do módulo) e salva girado em 3 partes para ler:
+    cores, tamanho, área impressa, modo de impressão, substrato, cilindro/fechamento, pistas x imagens."""
+    im = Image.open(prova)
+    W, H = im.size
+    if W - q['x1'] > 200:                      # quadro de informações à direita do módulo
+        c = im.crop((q['x1'] + 20, 0, W, H))
+    else:                                       # acima do módulo
+        c = im.crop((0, 0, W, max(q['y0'] - 20, 1)))
+    g = np.array(c.convert('L'))
+    ys = np.where((g < 200).sum(1) > 30)[0]
+    if len(ys):
+        c = c.crop((0, max(ys[0] - 10, 0), c.width, min(ys[-1] + 10, c.height)))
+    if c.height > c.width:
+        c = c.rotate(90, expand=True)
+    w, h = c.size
+    arqs = []
+    for i in range(3):
+        f = f'{prefixo}_{i}.png'
+        c.crop((i * w // 3, 0, (i + 1) * w // 3, h)).save(f); arqs.append(f)
+    return arqs
+
+
+def mascara_prova(prova, q, tinta='auto'):
+    """Tinta da prova dentro do quadro, reamostrada para 4 px/mm (largura x altura da imagem).
+    Exclui cotas azuis e legendas vermelhas vivas. tinta: 'escura' (preto e cores escuras),
+    'cinza' (tinta branca simulada em cinza claro) ou 'auto'."""
+    a = np.array(Image.open(prova).convert('RGB').crop((q['x0'], q['y0'], q['x1'], q['y1']))).astype(int)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    lum = a.mean(-1)
+    azul = b > r + 15
+    vermelho_vivo = ((r - g) > 75) & ((r - b) > 75)        # legendas vermelhas (cor viva e bordas suavizadas)
+    fundo = np.median(lum)
+    neutro = (abs(r - g) < 20) & (abs(r - b) < 20)
+    if tinta == 'auto':
+        escuros = (lum < fundo - 60) & ~azul & ~vermelho_vivo
+        tinta = 'escura' if escuros.mean() > 0.002 else 'cinza'
+    if tinta == 'escura':
+        m = (lum < fundo - 45) & ~azul & ~vermelho_vivo
+    else:
+        m = (lum < fundo - 12) & (lum > 120) & neutro & ~azul
+    m[:6] = m[-6:] = 0; m[:, :6] = m[:, -6:] = 0
+    lab, n = ndimage.label(m)
+    if n:
+        sz = ndimage.sum(m, lab, range(1, n + 1)); m = np.isin(lab, np.where(sz > 25)[0] + 1)
+    px = 300 / 25.4
+    ys, xs = np.where(m)
+    ext = None if not len(xs) else (xs.min() / px, (xs.max() + 1) / px, ys.min() / px, (ys.max() + 1) / px)
+    W, H = int(round(q['larg_mm'] * R)), int(round(q['alt_mm'] * R))
+    M = np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)) > 100
+    return dict(mascara=M, extensao_mm=ext, tinta=tinta,
+                area_mm2=float(m.sum() / px ** 2))
+
+
+# ---------------------------------------------------------------- comparação
+def comparar(prova, nossa, saida, periodo=True):
+    """Procura a melhor orientação (giro 0/90/180/270 e espelho) e posição da prova sobre a nossa arte.
+    periodo=True: a prova é um módulo que se repete no comprimento da nossa arte (corte aleatório).
+    Salva a sobreposição (cinza = igual, vermelho = só na nossa, azul = só na prova) e devolve as métricas,
+    incluindo elementos da nossa arte sem par na prova e vice-versa."""
+    M0 = prova['mascara']
+    O = nossa
+    Hn, Ln = O.shape
+    cands = []
+    for k in range(4):
+        for esp in (False, True):
+            M = np.rot90(M0, k)
+            if esp:
+                M = np.fliplr(M)
+            cands.append((f'giro{90 * k}' + ('_espelho' if esp else ''), M))
+    best = None
+    for nome, M in cands:
+        h, w = M.shape
+        if abs(h - Hn) > 12 * R:                 # a largura (altura da nossa máscara) tem que bater
+            continue
+        T = np.tile(M, (1, Ln // w + 3)) if periodo else np.pad(M, ((0, 0), (0, max(Ln - w, 0) + w)))
+        hh = min(h, Hn)
+        for dy in range(-10, 11, 2):
+            Oh = np.roll(O[:hh], dy, 0)
+            passos = range(0, w, 4) if periodo else range(0, max(Ln - w, 0) + 1, 4)
+            for ph in passos:
+                S = T[:hh, ph:ph + Ln] if periodo else T[:hh, :Ln]
+                if not periodo:
+                    S = np.roll(S, ph, 1)
+                i = (S & Oh).sum(); u = (S | Oh).sum()
+                if u and (best is None or i / u > best[0]):
+                    best = (i / u, nome, ph, dy, S.copy(), Oh.copy())
+    iou, nome, ph, dy, S, Oh = best
+    rgb = np.full(Oh.shape + (3,), 255, np.uint8)
+    rgb[Oh & S] = (60, 60, 60); rgb[Oh & ~S] = (220, 30, 30); rgb[~Oh & S] = (30, 90, 220)
+    Image.fromarray(rgb).save(saida)
+
+    def sem_par(A, B):
+        lab, n = ndimage.label(ndimage.binary_dilation(A, iterations=2))
+        out = []
+        for k in range(1, n + 1):
+            c = (lab == k) & A
+            if c.sum() > 60 and (c & ndimage.binary_dilation(B, iterations=3)).sum() / c.sum() < 0.5:
+                yy, xx = np.where(c); out.append((round(xx.mean() / R), round(yy.mean() / R), int(c.sum())))
+        return out
+    return dict(iou=round(float(iou), 3), orientacao=nome, fase_mm=ph / R, dy_mm=dy / R,
+                so_nossa=round(float((Oh & ~S).sum() / max(Oh.sum(), 1)), 3),
+                so_prova=round(float((~Oh & S).sum() / max(S.sum(), 1)), 3),
+                tinta_nossa_mm2=float(Oh.sum() / R ** 2), tinta_prova_mm2=float(S.sum() / R ** 2),
+                faltando_na_prova=sem_par(Oh, S), sobrando_na_prova=sem_par(S, Oh))
+
+
+def recortes(imagem, saida_prefixo, n=4):
+    """Divide uma imagem larga (ex. a sobreposição) em n partes ampliadas para olhar de perto."""
+    im = Image.open(imagem); w, h = im.size
+    arqs = []
+    for i in range(n):
+        f = f'{saida_prefixo}_{i}.png'
+        im.crop((i * w // n, 0, (i + 1) * w // n, h)).save(f); arqs.append(f)
+    return arqs
+```
+
 ## Publicar no tiiny.host (só depois da aprovação)
 Regra do usuário (19/11/2026). O usuário avalia a arte e só publica quando disser para publicar ("pode publicar", "aprovado, publica"). Nunca publicar sem essa ordem, nem a primeira versão.
 1. Publicar pela **API v3 com o script `publicar_tiiny.py`** (abaixo), que manda o PDF direto do disco para o tiiny.host. Não usar o `publish_site` do conector Tiiny Host para PDF: ele exige o arquivo inteiro em base64 dentro da chamada, o que não cabe para arquivos reais. O conector serve para `list_sites` e `delete_site`.

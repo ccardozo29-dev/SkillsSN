@@ -1,5 +1,10 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.0 – 23/11/2026
+- Novo roteiro "Verificar a prova da clicheria": compara a prova da clicheria (Arte Clicheria) com a nossa arte (Arte Vetorial, PDF ou CDR) e diz se pode aprovar o clichê (tamanho, cores, elementos, espelhamento, peso de traço e fonte, margem, emenda, quadro de informações).
+- Novo script `verificar_prova.py` (baixa do TeamDesk, converte CDR, acha o quadro da prova, sobrepõe e mede). Validado nos pedidos 23496 (ok), 23492 (ok, com campos a confirmar) e 23337 (fonte refeita, não aprovar).
+- Rotina agendada (seg a sex, 8h–18h, a cada 30 min) e registro das verificações no documento do Projeto `claude/verificacoes-clicheria.md`.
+
 ## v1.6.0 – 19/11/2026
 - Toda arte gerada é gravada no Dropbox em `/SolNascente/Artes Clientes/<Nome da Arte>/` (pasta só com o nome da arte; criada se não existir), pelo novo script `dropbox_artes.py` (API HTTP do Dropbox; o conector não envia binários). Testado: criar pasta, gravar, usar pasta existente e bloquear substituição sem confirmação.
 - Credenciais (tiiny.host e Dropbox) reunidas no documento privado do Projeto `claude/credenciais.md`.
