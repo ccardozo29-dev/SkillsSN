@@ -1,5 +1,8 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.2 – 24/11/2026
+- Verificação da prova: sugestão passa a ser só APROVAR ou REPROVAR (confirmações vão na explicação) e cada pedido sai no formato "Pedido / Arte / Sugestão" seguido da explicação, também no e-mail da rotina.
+
 ## v1.7.1 – 23/11/2026
 - Rotina agendada de verificação passa a rodar de hora em hora (8h às 18h, seg a sex): o mínimo das tarefas agendadas é 1 hora.
 

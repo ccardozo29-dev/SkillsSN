@@ -209,11 +209,18 @@ Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, 
    - emenda: no corte aleatório, nenhum elemento cortado na emenda (tinta da prova começa e termina com folga nas pontas do fechamento);
    - campos do quadro de informações: modo de impressão **Externa** (papel; "Interna" costuma ser espelhado: confirmar), cilindro/fechamento coerente com o pedido, campos "xxx" ou em branco (só observar);
    - traços e textos muito finos (abaixo de ~0,15 mm) e afinamento ou engrossamento feito pela clicheria.
-5. Resultado: **APROVAR**, **CONFIRMAR ANTES** (itens a confirmar com a clicheria ou o comercial) ou **NÃO APROVAR** (o que pedir para corrigir), com uma tabela curta. Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se o resultado for diferente).
+5. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a prova confere com a nossa arte; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) e dizer o que pedir para corrigir. Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
+   Formato de cada pedido no relatório (e no e-mail da rotina):
+   ```
+   Pedido: I202611-23506
+   Arte: MADRE REINA 2026
+   Sugestão: APROVAR
+   <explicação: o que foi conferido, divergências, o que confirmar ou pedir à clicheria>
+   ```
 6. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
 
 ### Rotina agendada (seg a sex, 8h às 18h, de hora em hora)
-Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), registrar no documento e notificar o usuário com o resultado. Sem pedido novo: terminar sem notificar.
+Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), registrar no documento e terminar com o relatório no formato acima (vai por e-mail para a conta do usuário, ccardozo29@gmail.com, e por notificação no celular). Sem pedido novo: terminar sem notificar.
 
 Para usar os scripts numa sessão nova, extrair os blocos de código das skills (fonte: repositório público `github.com/ccardozo29-dev/SkillsSN`):
 ```python
