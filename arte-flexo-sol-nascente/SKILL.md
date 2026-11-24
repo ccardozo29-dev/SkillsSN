@@ -204,7 +204,7 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
 1. Baixar com `verificar_prova.baixar(pedido, pasta)` (baixa as três artes; usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
 2. `quadro()` acha o módulo na prova; `info()` recorta o quadro de informações: **ler** cores, tamanho, área impressa, modo de impressão, substrato, cilindro/fechamento, pistas x imagens.
 3. `mascara_prova()` + `nossa_pdf()` + `comparar()` (`periodo=True` no corte aleatório: a prova é um módulo que se repete; `periodo=False` no corte individual). Olhar a sobreposição (`recortes()` para ampliar): cinza = igual, vermelho = só na nossa, azul = só na prova. Franjas de 1 px são normais (JPG). As legendas e cotas da prova podem aparecer em azul.
-3b. **Repetições iguais entre si** (regra do usuário, 24/11/2026): toda repetição de um elemento tem que ser idêntica às outras, na cor e no desenho. Rodar `repeticoes(prova, q, n_cores, saida)` e **olhar** a imagem `saida` (padrão | repetição, piores primeiro). Qualquer elemento que destoa dos iguais a ele é falha da clicheria, mesmo que pequeno: ex. no RUBI 2026 (23311) uma faceta do diamante saiu em dourado (133 C) em vez de vermelho (Warm Red C) numa coluna, o que vai para os dois clichês (dourado com faceta a mais, vermelho com faceta a menos). A comparação com a nossa arte (passo 3) não pega isso, porque a cor some na máscara e a diferença é pequena perto da arte toda. `suspeitos` não vazio = olhar; confirmado = REPROVAR. Ampliar também à mão alguns elementos de cada cor (`lado_a_lado`) comparando com a nossa arte. Em prova grande e cheia de elementos pequenos a função demora (~4 min no 500x420).
+3b. **Repetições iguais entre si** (regra do usuário, 24/11/2026): toda repetição de um elemento tem que ser idêntica às outras, na cor e no desenho. Rodar `repeticoes(prova, q, n_cores, saida)` e **olhar** a imagem `saida` (padrão | repetição, piores primeiro). Qualquer elemento que destoa dos iguais a ele é falha da clicheria, mesmo que pequeno: ex. no RUBI 2026 (23311) uma faceta do diamante saiu em dourado (133 C) em vez de vermelho (Warm Red C) numa coluna, o que vai para os dois clichês (dourado com faceta a mais, vermelho com faceta a menos). A comparação com a nossa arte (passo 3) não pega isso, porque a cor some na máscara e a diferença é pequena perto da arte toda. `suspeitos` não vazio = olhar; confirmado = REPROVAR. Ampliar também à mão alguns elementos de cada cor (`lado_a_lado`) comparando com a nossa arte. Em prova grande e cheia de elementos pequenos a função demora (~4 min no 500x420). Tinta branca (simulada em cinza claro): `limiar=20`. A função só compara repetições na mesma orientação; no corte individual com o logo repetido girado (ex. 23337, dois logos a 180°), girar um sobre o outro, alinhar e comparar à mão (nenhuma mancha só num dos dois).
 4. Arte aprovada x nossa arte: `aprovada(d['aprovada'], pasta_separada)` (devolve `tipo` 'captura' ou 'pdf' e a imagem da ficha).
    - **Ler a ficha** da imagem: título, data, **versão** (tem que ser a mesma do arquivo da `Arte Vetorial`, ex. `_v1`), medidas (largura x comprimento), substrato e cores marcadas. Versão, medida ou cor diferente = o cliente aprovou outra arte: REPROVAR e avisar.
    - Captura: `quadro_aprovada(imagem, comprimento, largura)` acha o quadro da arte (pela proporção; ex. 30x70 → 700, 300) e `mascara_aprovada()` + `comparar_aprovada(mascara, nossa, saida)` comparam com a máscara da `nossa_pdf()` (mesmo recorte do passo 3). Na sobreposição, cinza = igual, vermelho = só na nossa, azul = só na aprovada. As **cotas e anotações da ficha** (medidas, passo, retângulos de cota) aparecem em azul: ignorar. A captura tem só ~2 px/mm: conferir elementos, posição, quantidade de repetições e cor, não traço fino. `nossa_coberta` perto de 1 e `faltando_na_nossa` só com cotas = confere.
@@ -646,10 +646,10 @@ def lado_a_lado(imagens, saida, largura_px=1600):
 
 
 # ---------------------------------------------------------------- elementos repetidos iguais entre si
-def _cores_tinta(a, n_cores, fundo):
+def _cores_tinta(a, n_cores, fundo, limiar=45):
     """Classifica cada pixel em 0 (fundo) ou 1..n_cores (k-means simples nas cores da tinta)."""
     lum = a.mean(-1)
-    tinta = (lum < fundo - 45) & ~(a[..., 2] > a[..., 0] + 15)      # sem cotas azuis
+    tinta = (lum < fundo - limiar) & ~(a[..., 2] > a[..., 0] + 15)  # sem cotas azuis
     cls = np.zeros(lum.shape, np.uint8)
     if not tinta.any():
         return cls, []
@@ -665,7 +665,7 @@ def _cores_tinta(a, n_cores, fundo):
     return cls, [tuple(int(v) for v in cc) for cc in c]
 
 
-def repeticoes(prova, q, n_cores, saida, janela_mm=8, min_px=40):
+def repeticoes(prova, q, n_cores, saida, janela_mm=8, min_px=40, limiar=45):
     """Confere se os elementos que se repetem na prova são iguais entre si (cor e desenho).
     Ex.: no RUBI 2026 (23311) uma faceta do diamante saiu em dourado em vez de vermelho numa coluna só.
     Para cada cor, pega cada mancha dessa cor como âncora, recorta uma janela em volta (janela_mm),
@@ -678,7 +678,7 @@ def repeticoes(prova, q, n_cores, saida, janela_mm=8, min_px=40):
     px = 300 / 25.4
     a = np.array(Image.open(prova).convert('RGB').crop((q['x0'], q['y0'], q['x1'], q['y1']))).astype(int)
     fundo = np.median(a.mean(-1))
-    cls, cores = _cores_tinta(a, n_cores, fundo)
+    cls, cores = _cores_tinta(a, n_cores, fundo, limiar)
     m = int(janela_mm * px / 2)
     res = []
     tinta = cls > 0

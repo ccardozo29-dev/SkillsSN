@@ -1,5 +1,8 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.9.1 – 24/11/2026
+- `repeticoes()`: novo parâmetro `limiar` (use 20 na tinta branca, que a prova simula em cinza claro). Roteiro explica como comparar à mão repetições giradas (logos a 180° no corte individual).
+
 ## v1.9.0 – 24/11/2026
 - Verificação da prova ganha o passo 3b: todas as repetições de cada elemento têm que ser iguais entre si, na cor e no desenho. Um elemento que destoa dos outros (ex. faceta do diamante em dourado em vez de vermelho no RUBI 2026, pedido 23311) é falha: REPROVAR. A comparação com a nossa arte não pegava esse erro.
 - `verificar_prova.py`: nova função `repeticoes()` (separa as cores da tinta, agrupa os elementos iguais pela forma, monta o padrão de cada grupo e aponta as repetições que fogem dele, com imagem padrão | repetição para olhar).
