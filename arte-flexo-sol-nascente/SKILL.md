@@ -196,11 +196,22 @@ def salvar(pdf, nome_arte, sobrescrever=False):
 ```
 
 ## Verificar a prova da clicheria (antes de aprovar o clichê)
-Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, Cortsinos) refaz a nossa arte para gravar o clichê e manda uma prova (JPG a 300 dpi, quadro do módulo + quadro de informações). Antes de o usuário aprovar, comparar a prova (`Arte Clicheria` do pedido no TeamDesk) com a nossa arte (`Arte Vetorial`: PDF do padrão ou CDR) e dizer se pode aprovar.
-1. Baixar com `verificar_prova.baixar(pedido, pasta)` (usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
+Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, Cortsinos) refaz a nossa arte para gravar o clichê e manda uma prova (JPG a 300 dpi, quadro do módulo + quadro de informações). Antes de o usuário aprovar, garantir que as **três artes do pedido** no TeamDesk estão de acordo (regra do usuário, 24/11/2026):
+- `Arte Aprovada`: o que o **cliente** aprovou. O cliente não tem o arquivo, então costuma ser uma **captura de tela** da ficha aberta no tiiny.host (PDF do jsPDF com uma imagem só); às vezes é o próprio PDF do padrão.
+- `Arte Vetorial`: a arte que **nós** fizemos e mandamos para a clicheria (PDF do padrão ou CDR).
+- `Arte Clicheria`: a prova que a **clicheria** fez.
+A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo 4) e vetorial x clicheria (passos 2, 3 e 5). Se só uma das duas comparações bater, a sugestão é REPROVAR.
+1. Baixar com `verificar_prova.baixar(pedido, pasta)` (baixa as três artes; usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
 2. `quadro()` acha o módulo na prova; `info()` recorta o quadro de informações: **ler** cores, tamanho, área impressa, modo de impressão, substrato, cilindro/fechamento, pistas x imagens.
 3. `mascara_prova()` + `nossa_pdf()` + `comparar()` (`periodo=True` no corte aleatório: a prova é um módulo que se repete; `periodo=False` no corte individual). Olhar a sobreposição (`recortes()` para ampliar): cinza = igual, vermelho = só na nossa, azul = só na prova. Franjas de 1 px são normais (JPG). As legendas e cotas da prova podem aparecer em azul.
-4. Conferir e relatar, item por item:
+4. Arte aprovada x nossa arte: `aprovada(d['aprovada'], pasta_separada)` (devolve `tipo` 'captura' ou 'pdf' e a imagem da ficha).
+   - **Ler a ficha** da imagem: título, data, **versão** (tem que ser a mesma do arquivo da `Arte Vetorial`, ex. `_v1`), medidas (largura x comprimento), substrato e cores marcadas. Versão, medida ou cor diferente = o cliente aprovou outra arte: REPROVAR e avisar.
+   - Captura: `quadro_aprovada(imagem, comprimento, largura)` acha o quadro da arte (pela proporção; ex. 30x70 → 700, 300) e `mascara_aprovada()` + `comparar_aprovada(mascara, nossa, saida)` comparam com a máscara da `nossa_pdf()` (mesmo recorte do passo 3). Na sobreposição, cinza = igual, vermelho = só na nossa, azul = só na aprovada. As **cotas e anotações da ficha** (medidas, passo, retângulos de cota) aparecem em azul: ignorar. A captura tem só ~2 px/mm: conferir elementos, posição, quantidade de repetições e cor, não traço fino. `nossa_coberta` perto de 1 e `faltando_na_nossa` só com cotas = confere.
+   - PDF do padrão: se o `md5` for igual ao da `Arte Vetorial`, é o mesmo arquivo; se não, `nossa_pdf(a['pdf'])` + `comparar_aprovada()` contra a nossa.
+   - Se o quadro não for achado (captura cortada, zoom diferente), comparar olhando `lado_a_lado([imagem_aprovada, sobreposicao_ou_pagina_da_nossa])`.
+   - Sem `Arte Aprovada` no pedido: dizer no relatório que não deu para conferir a aprovação do cliente.
+5. Conferir e relatar, item por item:
+   - arte aprovada pelo cliente = nossa arte (passo 4): mesma versão, elementos, posição, medidas e cores;
    - tamanho do módulo = largura x fechamento do pedido (330 ou 420 no corte aleatório; folha inteira no corte individual) e o que o quadro de informações diz;
    - cor(es) e quantidade = as da ficha e as do item no TeamDesk (avisar divergência no cadastro, ex. item "PRETO" e arte Pantone 476 C);
    - todos os elementos presentes, sem sobrar nada (`faltando_na_prova` / `sobrando_na_prova` vazios), mesma posição, sem espelhamento (`orientacao` sem `_espelho`);
@@ -209,15 +220,15 @@ Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, 
    - emenda: no corte aleatório, nenhum elemento cortado na emenda (tinta da prova começa e termina com folga nas pontas do fechamento);
    - campos do quadro de informações: modo de impressão **Externa** (papel; "Interna" costuma ser espelhado: confirmar), cilindro/fechamento coerente com o pedido, campos "xxx" ou em branco (só observar);
    - traços e textos muito finos (abaixo de ~0,15 mm) e afinamento ou engrossamento feito pela clicheria.
-5. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a prova confere com a nossa arte; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) e dizer o que pedir para corrigir. Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
+6. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a arte aprovada pelo cliente, a nossa arte e a prova conferem entre si; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) ou quando a nossa arte não é a que o cliente aprovou (outra versão, elemento, medida ou cor), e dizer o que corrigir (com a clicheria ou na nossa arte). Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
    Formato de cada pedido no relatório (e no e-mail da rotina):
    ```
    Pedido: I202611-23506
    Arte: MADRE REINA 2026
    Sugestão: APROVAR
-   <explicação: o que foi conferido, divergências, o que confirmar ou pedir à clicheria>
+   <explicação: arte aprovada x nossa arte, nossa arte x prova, divergências, o que confirmar ou pedir à clicheria>
    ```
-6. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
+7. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
 
 ### Rotina agendada (seg a sex, 8h às 18h, de hora em hora)
 Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), mandar **um e-mail por pedido** pelo Gmail (conector Gmail, `send_message`, enviado da conta ccardozo29@gmail.com) para claudio@solnascentepapeis.com.br, sempre com cópia (cc) para nelly.medeiros@solnascentepapeis.com (regra do usuário, 24/11/2026), com assunto `Arte: <Referência da Arte> Sugestão: APROVAR` (ou REPROVAR) e corpo no formato acima, em texto simples; só depois registrar no documento. A notificação no celular traz uma linha por pedido. Sem pedido novo: terminar sem e-mail nem notificação.
@@ -235,7 +246,7 @@ extrair('SkillsSN/arte-flexo-sol-nascente/SKILL.md', 'verificar_prova.py', 'veri
 
 ## verificar_prova.py
 ```python
-"""Verificação da prova da clicheria contra a nossa arte vetorial (Sol Nascente Papéis).
+"""Verificação da prova da clicheria e da arte aprovada pelo cliente contra a nossa arte vetorial (Sol Nascente Papéis).
 
 Ferramentas para o roteiro "Verificar prova da clicheria" da skill. Gera medidas e imagens; a decisão
 (aprovar ou não) é de quem verifica, olhando as imagens.
@@ -247,6 +258,9 @@ Ferramentas para o roteiro "Verificar prova da clicheria" da skill. Gera medidas
     vp.info(d['clicheria'], q, 'pedido_23496/info')        # recortes do quadro de informações para ler
     prova = vp.mascara_prova(d['clicheria'], q)            # tinta da prova, 4 px/mm
     r = vp.comparar(prova, nossa, 'pedido_23496/sobreposicao.png')
+    a = vp.aprovada(d['aprovada'], 'pedido_23496/aprovada')  # o que o cliente aprovou (captura ou PDF)
+    qa = vp.quadro_aprovada(a['imagem'], 700, 300)         # quadro da arte na captura (comprimento x largura)
+    ra = vp.comparar_aprovada(vp.mascara_aprovada(a['imagem'], qa, 700, 300), nossa, 'pedido_23496/aprov_x_nossa.png')
 """
 import glob, os, re, subprocess
 import numpy as np
@@ -500,6 +514,132 @@ def recortes(imagem, saida_prefixo, n=4):
         f = f'{saida_prefixo}_{i}.png'
         im.crop((i * w // n, 0, (i + 1) * w // n, h)).save(f); arqs.append(f)
     return arqs
+
+
+# ---------------------------------------------------------------- arte aprovada pelo cliente
+def aprovada(arquivo, pasta):
+    """Prepara a `Arte Aprovada` (o que o cliente aprovou) para conferir. Pode ser:
+    - captura de tela (PDF do jsPDF com uma imagem só, ou PNG/JPG) da ficha aberta no tiiny.host → tipo 'captura';
+    - o próprio PDF do padrão Sol Nascente (2 páginas, vetorial) → tipo 'pdf'.
+    Devolve dict(tipo, imagem, md5[, pdf]) com a imagem da ficha (página 1) para ler título, versão, data,
+    medidas, substrato e cores marcadas. Usar uma pasta só para ela (separada da nossa arte)."""
+    import hashlib
+    os.makedirs(pasta, exist_ok=True)
+    md5 = hashlib.md5(open(arquivo, 'rb').read()).hexdigest()
+    if not arquivo.lower().endswith('.pdf'):
+        return dict(tipo='captura', imagem=arquivo, md5=md5)
+    lista = subprocess.run(['pdfimages', '-list', arquivo], capture_output=True, text=True).stdout.splitlines()[2:]
+    paginas = int(re.search(r'Pages:\s+(\d+)', subprocess.run(['pdfinfo', arquivo], capture_output=True,
+                                                               text=True).stdout).group(1))
+    base = os.path.join(pasta, 'aprovada')
+    if paginas == 1 and len(lista) == 1:                      # captura de tela salva em PDF
+        subprocess.run(['pdfimages', '-png', arquivo, base], check=True)
+        return dict(tipo='captura', imagem=sorted(glob.glob(base + '-*.png'))[0], md5=md5)
+    pdf = base + '.pdf'                                       # PDF do padrão: cópia na própria pasta, para o
+    subprocess.run(['cp', arquivo, pdf], check=True)          # nossa_pdf() não misturar com a nossa arte
+    subprocess.run(['pdftoppm', '-r', '40', '-f', '1', '-l', '1', '-png', pdf, base], check=True)
+    return dict(tipo='pdf', imagem=sorted(glob.glob(base + '*.png'))[-1], pdf=pdf, md5=md5)
+
+
+def quadro_aprovada(imagem, comprimento, largura, tol=0.04):
+    """Acha na captura o quadro da arte (retângulo com a proporção comprimento x largura em mm, ex. 700 x 300)
+    e devolve dict(x0, x1, y0, y1, px_mm). O cabeçalho e a tabela de baixo da ficha têm a mesma largura,
+    mas não a proporção, por isso não são confundidos."""
+    c = np.array(Image.open(imagem).convert('RGB')).astype(int)
+    d = (c.mean(-1) < 200) & ~(c[..., 2] > c[..., 0] + 25)     # linhas escuras, sem as cotas azuis
+    H, W = d.shape
+
+    def grupos(v):
+        if not len(v):
+            return []
+        gs, ini = [], v[0]
+        for p, q in zip(v[:-1], v[1:]):
+            if q - p > 3:
+                gs.append((ini, p)); ini = q
+        gs.append((ini, v[-1]))
+        return gs
+    hl = grupos(np.where(d.sum(1) > W * 0.25)[0])
+    alvo = comprimento / largura
+    melhor = None
+    for i in range(len(hl)):
+        for j in range(i + 1, len(hl)):
+            y0, y1 = hl[i][1] + 1, hl[j][0] - 1
+            if y1 - y0 < 40:
+                continue
+            col = grupos(np.where(d[y0:y1].sum(0) > (y1 - y0) * 0.9)[0])
+            for k in range(len(col)):                     # pares de linhas verticais (a barra de rolagem também aparece)
+                for m in range(k + 1, len(col)):
+                    x0, x1 = col[k][1] + 1, col[m][0] - 1
+                    r = (x1 - x0) / (y1 - y0)
+                    if abs(r / alvo - 1) < tol and (melhor is None or (x1 - x0) > melhor[1] - melhor[0]):
+                        melhor = (int(x0), int(x1), int(y0), int(y1))
+    if melhor is None:
+        raise ValueError('quadro da arte não encontrado na captura: conferir só olhando a imagem')
+    x0, x1, y0, y1 = melhor
+    return dict(x0=x0, x1=x1, y0=y0, y1=y1, px_mm=round((x1 - x0) / comprimento, 3))
+
+
+def mascara_aprovada(imagem, q, comprimento, largura, limiar=25):
+    """Tinta da captura dentro do quadro, em 4 px/mm (largura x comprimento, como `nossa_pdf`).
+    Tira as cotas azuis e compara cada pixel com o fundo (mediana), que pode ser papel colorido."""
+    a = np.array(Image.open(imagem).convert('RGB').crop((q['x0'] + 2, q['y0'] + 2, q['x1'] - 2, q['y1'] - 2)))
+    a = a.astype(int)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    fundo = np.median(a.reshape(-1, 3), 0)
+    dist = np.abs(a - fundo).sum(-1)
+    azul = (b > r + 25) & (b > g + 5)
+    m = (dist > limiar) & ~azul
+    W, H = int(round(comprimento * R)), int(round(largura * R))
+    return np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)) > 60
+
+
+def comparar_aprovada(aprov, nossa, saida, folga_mm=1.0):
+    """Compara a tinta da captura aprovada com a nossa arte (mesma orientação, só um pequeno ajuste de posição).
+    A captura tem pouca resolução (~2 px/mm): olhar elementos, posição e cor, não traço fino.
+    Salva a sobreposição (cinza = igual, vermelho = só na nossa, azul = só na aprovada) e devolve as métricas."""
+    h = min(aprov.shape[0], nossa.shape[0]); w = min(aprov.shape[1], nossa.shape[1])
+    A0, O = aprov[:h, :w], nossa[:h, :w]
+    it = max(int(folga_mm * R), 1)
+    best = None
+    for dy in range(-8, 9, 2):
+        for dx in range(-8, 9, 2):
+            A = np.roll(np.roll(A0, dy, 0), dx, 1)
+            Ad, Od = ndimage.binary_dilation(A, iterations=it), ndimage.binary_dilation(O, iterations=it)
+            cob_n = (O & Ad).sum() / max(O.sum(), 1)
+            cob_a = (A & Od).sum() / max(A.sum(), 1)
+            if best is None or cob_n + cob_a > best[0] + best[1]:
+                best = (cob_n, cob_a, A, dx, dy)
+    cob_n, cob_a, A, dx, dy = best
+    rgb = np.full(O.shape + (3,), 255, np.uint8)
+    Ad, Od = ndimage.binary_dilation(A, iterations=it), ndimage.binary_dilation(O, iterations=it)
+    rgb[O | A] = (60, 60, 60); rgb[O & ~Ad] = (220, 30, 30); rgb[A & ~Od] = (30, 90, 220)
+    Image.fromarray(rgb).save(saida)
+
+    def sem_par(X, Y):
+        lab, n = ndimage.label(ndimage.binary_dilation(X, iterations=3))
+        out = []
+        for k in range(1, n + 1):
+            c = (lab == k) & X
+            if c.sum() > 80 and (c & ndimage.binary_dilation(Y, iterations=it + 3)).sum() / c.sum() < 0.5:
+                yy, xx = np.where(c); out.append((round(xx.mean() / R), round(yy.mean() / R), int(c.sum())))
+        return out
+    return dict(nossa_coberta=round(float(cob_n), 3), aprovada_coberta=round(float(cob_a), 3),
+                desloc_mm=(dx / R, dy / R), faltando_na_nossa=sem_par(A, O), sobrando_na_nossa=sem_par(O, A))
+
+
+def lado_a_lado(imagens, saida, largura_px=1600):
+    """Empilha imagens (ex. aprovada, nossa, prova) na mesma largura, para olhar e anexar quando houver divergência."""
+    ims = []
+    for f in imagens:
+        im = Image.open(f).convert('RGB') if isinstance(f, str) else \
+            Image.fromarray(np.where(f, 0, 255).astype(np.uint8)).convert('RGB')
+        ims.append(im.resize((largura_px, max(1, round(im.height * largura_px / im.width)))))
+    out = Image.new('RGB', (largura_px, sum(i.height for i in ims) + 20 * (len(ims) - 1)), 'white')
+    y = 0
+    for im in ims:
+        out.paste(im, (0, y)); y += im.height + 20
+    out.save(saida)
+    return saida
 ```
 
 ## Publicar no tiiny.host (só depois da aprovação)

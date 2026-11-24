@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.8.0 – 24/11/2026
+- Verificação da prova passa a conferir também a `Arte Aprovada` (o que o cliente aprovou, em geral uma captura de tela da ficha no tiiny.host): a cadeia aprovada = vetorial = clicheria tem que bater; nossa arte diferente da aprovada (versão, elemento, medida ou cor) = REPROVAR.
+- `verificar_prova.py`: novas funções `aprovada()` (captura em PDF/imagem ou PDF do padrão), `quadro_aprovada()` (acha o quadro da arte na captura pela proporção), `mascara_aprovada()`, `comparar_aprovada()` e `lado_a_lado()`.
+
 ## v1.7.6 – 24/11/2026
 - Link publicado no tiiny.host passa a ser entregue sempre num bloco de código (só o link), com botão de copiar, para repassar ao vendedor.
 
