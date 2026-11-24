@@ -1,5 +1,8 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.4 – 24/11/2026
+- E-mails da verificação de provas passam a ir sempre com cópia para nelly.medeiros@solnascentepapeis.com.
+
 ## v1.7.3 – 24/11/2026
 - Rotina de verificação: um e-mail por pedido pelo Gmail para claudio@solnascentepapeis.com.br, com assunto "Arte: <referência> Sugestão: APROVAR/REPROVAR"; o e-mail automático da plataforma foi desligado.
 
