@@ -1,5 +1,8 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.3 – 24/11/2026
+- Rotina de verificação: um e-mail por pedido pelo Gmail para claudio@solnascentepapeis.com.br, com assunto "Arte: <referência> Sugestão: APROVAR/REPROVAR"; o e-mail automático da plataforma foi desligado.
+
 ## v1.7.2 – 24/11/2026
 - Verificação da prova: sugestão passa a ser só APROVAR ou REPROVAR (confirmações vão na explicação) e cada pedido sai no formato "Pedido / Arte / Sugestão" seguido da explicação, também no e-mail da rotina.
 

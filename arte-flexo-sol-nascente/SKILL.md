@@ -220,7 +220,7 @@ Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, 
 6. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
 
 ### Rotina agendada (seg a sex, 8h às 18h, de hora em hora)
-Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), registrar no documento e terminar com o relatório no formato acima (vai por e-mail para a conta do usuário, ccardozo29@gmail.com, e por notificação no celular). Sem pedido novo: terminar sem notificar.
+Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), mandar **um e-mail por pedido** pelo Gmail (conector Gmail, `send_message`, enviado da conta ccardozo29@gmail.com) para claudio@solnascentepapeis.com.br, com assunto `Arte: <Referência da Arte> Sugestão: APROVAR` (ou REPROVAR) e corpo no formato acima, em texto simples; só depois registrar no documento. A notificação no celular traz uma linha por pedido. Sem pedido novo: terminar sem e-mail nem notificação.
 
 Para usar os scripts numa sessão nova, extrair os blocos de código das skills (fonte: repositório público `github.com/ccardozo29-dev/SkillsSN`):
 ```python
