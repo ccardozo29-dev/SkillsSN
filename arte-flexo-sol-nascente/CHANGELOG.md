@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.7.5 – 24/11/2026
+- Corrigido: a página 2 (só a arte) podia sair com cores diferentes da arte na ficha (página 1). O `fix_spots` pulava os recursos da página 2 porque usava `id()` do Python para não repetir; agora usa o objgen do PDF. Visto na Growfit 2026 30x40.
+- Novo `conferir_cores()`: cada Pantone tem que ter a mesma definição em todas as páginas; o `gerar()` e o `limpar_pdf()` param com erro se divergir. Regra registrada no padrão de entrega e na conferência final.
+
 ## v1.7.4 – 24/11/2026
 - E-mails da verificação de provas passam a ir sempre com cópia para nelly.medeiros@solnascentepapeis.com.
 

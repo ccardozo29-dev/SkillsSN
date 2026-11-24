@@ -43,7 +43,7 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
 
 ## Padrão de entrega: PDF de 2 páginas
 - Nome: `cliente_LxC_vN.pdf` (minúsculas, sem acento, com `_`). LxC em cm: L = largura (atravessa a máquina), C = comprimento (sentido da repetição). Ex.: `nico_e_pippa_30x70_v1.pdf`.
-- Página 2: só a arte, 1:1, no tamanho C x L da folha. Folha curta (ex. 50x35) mostra duas folhas (700 mm) e a ficha ganha a linha de corte vermelha tracejada. Vetorial, só com as cores da arte. A arte termina a 1 mm das bordas de cima e de baixo; o fundo vai até a borda (ver Regras de arte).
+- Página 2: só a arte, 1:1, no tamanho C x L da folha. Folha curta (ex. 50x35) mostra duas folhas (700 mm) e a ficha ganha a linha de corte vermelha tracejada. Vetorial, só com as cores da arte, **exatamente as mesmas cores da arte da página 1** (mesma Pantone com a mesma definição: Lab e função tipo 2; regra do usuário, 24/11/2026). A arte termina a 1 mm das bordas de cima e de baixo; o fundo vai até a borda (ver Regras de arte).
 - Tela com mais de uma folha na largura (ex.: folha 24x24 numa tela de 50x48, que é L 500 x C 480, ou seja, 2 x 2 folhas): marcar também os cortes na largura, com linhas vermelhas tracejadas de ponta a ponta da arte. As pistas ficam centradas e a sobra vira refile igual nas duas bordas: 500 - 2 x 240 = 20, então os cortes ficam em 10, 250 e 490 mm. À direita da arte entram as cotas verticais (36 pt, a 27,89 mm da borda): da borda de cima até o corte do meio (250,00 mm) e a pista de baixo (240,00 mm). No `gerar()`: `cortes=[240]` (comprimento) e `cortes_h=[10, 250, 490]` (largura); as cotas da direita saem sozinhas. Esquecer os cortes na largura foi um erro corrigido pelo usuário na VIDE 24x24 (10/11/2026).
 - Página 1: ficha técnica, gerada pelo `ficha.py` abaixo, que reproduz o modelo do Corel com as medidas originais:
   - Largura da página max(800, C+200) mm (700x500 vira 1000) e altura L+300 mm. Bloco de 700 mm centralizado.
@@ -67,7 +67,7 @@ ficha.gerar('arte.pdf', ficha.nome_arquivo('Nico e Pippa', '30x70', 2),
 ```
 4. Cor Pantone nova: buscar o Lab D50 (Solid Coated) e passar `lab_extra={'PANTONE XXXX C': (L, a, b)}`. Sem isso a separação sai certa, mas a amostra na tela fica preta. Ao abrir o PDF, o Corel troca o Lab pelo da paleta dele: se o usuário devolver um PDF exportado do Corel, copiar o Lab da Separation para o `PANTONE_LAB` (foi assim com a 172 C).
 5. Arte ou módulo avulso (sem ficha): `ficha.limpar_pdf('entrada.pdf', 'saida.pdf')` regrava na estrutura que o Corel abre e já corta a margem de 1 mm (`margem=0` para não cortar). SVG por cor: `ficha.pdf_para_svg('saida.pdf', 0, 'saida.svg')`.
-6. Antes de entregar: renderizar as duas páginas e conferir medidas, nomes das cores, passo x cilindro e emenda; `pdffonts` deve sair vazio; `ficha.conferir_margem('saida.pdf')` tem que dar cima e baixo de 1,00 mm ou mais (`ok=True`); conferir na página 1 que a logomarca da Sol Nascente aparece no quadrado da esquerda do cabeçalho. Gravar o PDF no Dropbox (ver "Guardar no Dropbox") e entregar o PDF (e o SVG por cor, se for montar no Corel).
+6. Antes de entregar: renderizar as duas páginas e conferir medidas, nomes das cores, passo x cilindro e emenda; `pdffonts` deve sair vazio; `ficha.conferir_cores('saida.pdf')` tem que voltar vazio (mesma definição de cada Pantone na ficha e na página 2) e, renderizando as duas páginas, a cor da arte na página 2 tem que ser igual à da arte dentro da ficha (regra do usuário, 24/11/2026: página 2 com cor diferente da página 1 não pode ser entregue); `ficha.conferir_margem('saida.pdf')` tem que dar cima e baixo de 1,00 mm ou mais (`ok=True`); conferir na página 1 que a logomarca da Sol Nascente aparece no quadrado da esquerda do cabeçalho. Gravar o PDF no Dropbox (ver "Guardar no Dropbox") e entregar o PDF (e o SVG por cor, se for montar no Corel).
 
 ## Guardar no Dropbox (toda arte gerada)
 Regra do usuário (19/11/2026). Todo PDF de arte gerado (v1, v2, ... e cada correção) vai para o Dropbox logo depois de gerado e conferido, antes de entregar. Não depende de aprovação.
@@ -1293,11 +1293,14 @@ def fix_spots(pdf, lab_extra=None):
     """Deixa todas as cores especiais como o Corel exporta: Separation com função tipo 2
     (alternativa Lab D50 quando o Lab é conhecido; senão CMYK)."""
     lab_extra = lab_extra or {}
-    seen = set()
+    seen = set()          # objgen dos dicionários indiretos já tratados (id() do Python é reutilizado
+                          # entre objetos temporários do pikepdf e pulava a página 2: cores diferentes)
 
-    def visit(res):
-        if res is None or id(res) in seen: return
-        seen.add(id(res))
+    def visit(res, prof=0):
+        if res is None or prof > 8: return
+        if res.is_indirect:
+            if res.objgen in seen: return
+            seen.add(res.objgen)
         cs = res.get('/ColorSpace')
         if cs is not None:
             for k in list(cs.keys()):
@@ -1329,10 +1332,45 @@ def fix_spots(pdf, lab_extra=None):
         xo = res.get('/XObject')
         if xo is not None:
             for k, v in xo.items():
-                visit(v.get('/Resources'))
+                visit(v.get('/Resources'), prof + 1)
 
     for p in pdf.pages:
         visit(p.Resources)
+    erros = conferir_cores(pdf)
+    if erros:
+        raise ValueError('cores especiais diferentes entre as páginas: ' + '; '.join(erros))
+
+
+def conferir_cores(pdf):
+    """Cada cor especial tem que ter a MESMA definição (alternativa e função) em todas as páginas e em todos
+    os recursos: a arte da página 2 tem que sair com as mesmas cores da arte dentro da ficha (página 1).
+    Aceita um pikepdf.Pdf ou o caminho do PDF. Devolve a lista de divergências (vazia = ok)."""
+    if isinstance(pdf, str):
+        pdf = pikepdf.open(pdf)
+    defs, erros = {}, []
+
+    def assinatura(v):
+        alt, fn = v[2], v[3]
+        if not (isinstance(fn, pikepdf.Dictionary) and int(fn.get('/FunctionType', 0)) == 2):
+            return None
+        a = 'Lab' if isinstance(alt, pikepdf.Array) and str(alt[0]) == '/Lab' else str(alt)
+        return (a, tuple(round(float(x), 3) for x in fn.C1))
+
+    def visit(res, onde, prof=0):
+        if res is None or prof > 8: return
+        for k, v in (res.get('/ColorSpace') or {}).items():
+            if isinstance(v, pikepdf.Array) and str(v[0]) == '/Separation':
+                nm, sg = str(v[1])[1:], assinatura(v)
+                if sg is None:
+                    erros.append(f'{nm} sem função tipo 2 ({onde})')
+                elif defs.setdefault(nm, (sg, onde))[0] != sg:
+                    erros.append(f'{nm}: {defs[nm][1]} {defs[nm][0]} x {onde} {sg}')
+        for k, v in (res.get('/XObject') or {}).items():
+            visit(v.get('/Resources'), onde, prof + 1)
+
+    for i, p in enumerate(pdf.pages):
+        visit(p.Resources, f'página {i + 1}')
+    return erros
 
 
 # ---------------------------------------------------------------- margem da arte (1 mm em cima e embaixo)
