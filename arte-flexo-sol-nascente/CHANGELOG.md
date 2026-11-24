@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.9.0 – 24/11/2026
+- Verificação da prova ganha o passo 3b: todas as repetições de cada elemento têm que ser iguais entre si, na cor e no desenho. Um elemento que destoa dos outros (ex. faceta do diamante em dourado em vez de vermelho no RUBI 2026, pedido 23311) é falha: REPROVAR. A comparação com a nossa arte não pegava esse erro.
+- `verificar_prova.py`: nova função `repeticoes()` (separa as cores da tinta, agrupa os elementos iguais pela forma, monta o padrão de cada grupo e aponta as repetições que fogem dele, com imagem padrão | repetição para olhar).
+
 ## v1.8.0 – 24/11/2026
 - Verificação da prova passa a conferir também a `Arte Aprovada` (o que o cliente aprovou, em geral uma captura de tela da ficha no tiiny.host): a cadeia aprovada = vetorial = clicheria tem que bater; nossa arte diferente da aprovada (versão, elemento, medida ou cor) = REPROVAR.
 - `verificar_prova.py`: novas funções `aprovada()` (captura em PDF/imagem ou PDF do padrão), `quadro_aprovada()` (acha o quadro da arte na captura pela proporção), `mascara_aprovada()`, `comparar_aprovada()` e `lado_a_lado()`.

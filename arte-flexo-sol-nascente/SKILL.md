@@ -204,6 +204,7 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
 1. Baixar com `verificar_prova.baixar(pedido, pasta)` (baixa as três artes; usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
 2. `quadro()` acha o módulo na prova; `info()` recorta o quadro de informações: **ler** cores, tamanho, área impressa, modo de impressão, substrato, cilindro/fechamento, pistas x imagens.
 3. `mascara_prova()` + `nossa_pdf()` + `comparar()` (`periodo=True` no corte aleatório: a prova é um módulo que se repete; `periodo=False` no corte individual). Olhar a sobreposição (`recortes()` para ampliar): cinza = igual, vermelho = só na nossa, azul = só na prova. Franjas de 1 px são normais (JPG). As legendas e cotas da prova podem aparecer em azul.
+3b. **Repetições iguais entre si** (regra do usuário, 24/11/2026): toda repetição de um elemento tem que ser idêntica às outras, na cor e no desenho. Rodar `repeticoes(prova, q, n_cores, saida)` e **olhar** a imagem `saida` (padrão | repetição, piores primeiro). Qualquer elemento que destoa dos iguais a ele é falha da clicheria, mesmo que pequeno: ex. no RUBI 2026 (23311) uma faceta do diamante saiu em dourado (133 C) em vez de vermelho (Warm Red C) numa coluna, o que vai para os dois clichês (dourado com faceta a mais, vermelho com faceta a menos). A comparação com a nossa arte (passo 3) não pega isso, porque a cor some na máscara e a diferença é pequena perto da arte toda. `suspeitos` não vazio = olhar; confirmado = REPROVAR. Ampliar também à mão alguns elementos de cada cor (`lado_a_lado`) comparando com a nossa arte. Em prova grande e cheia de elementos pequenos a função demora (~4 min no 500x420).
 4. Arte aprovada x nossa arte: `aprovada(d['aprovada'], pasta_separada)` (devolve `tipo` 'captura' ou 'pdf' e a imagem da ficha).
    - **Ler a ficha** da imagem: título, data, **versão** (tem que ser a mesma do arquivo da `Arte Vetorial`, ex. `_v1`), medidas (largura x comprimento), substrato e cores marcadas. Versão, medida ou cor diferente = o cliente aprovou outra arte: REPROVAR e avisar.
    - Captura: `quadro_aprovada(imagem, comprimento, largura)` acha o quadro da arte (pela proporção; ex. 30x70 → 700, 300) e `mascara_aprovada()` + `comparar_aprovada(mascara, nossa, saida)` comparam com a máscara da `nossa_pdf()` (mesmo recorte do passo 3). Na sobreposição, cinza = igual, vermelho = só na nossa, azul = só na aprovada. As **cotas e anotações da ficha** (medidas, passo, retângulos de cota) aparecem em azul: ignorar. A captura tem só ~2 px/mm: conferir elementos, posição, quantidade de repetições e cor, não traço fino. `nossa_coberta` perto de 1 e `faltando_na_nossa` só com cotas = confere.
@@ -214,13 +215,14 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
    - arte aprovada pelo cliente = nossa arte (passo 4): mesma versão, elementos, posição, medidas e cores;
    - tamanho do módulo = largura x fechamento do pedido (330 ou 420 no corte aleatório; folha inteira no corte individual) e o que o quadro de informações diz;
    - cor(es) e quantidade = as da ficha e as do item no TeamDesk (avisar divergência no cadastro, ex. item "PRETO" e arte Pantone 476 C);
+   - todas as repetições de cada elemento iguais entre si, na cor e no desenho (passo 3b): nenhuma faceta, letra ou detalhe com cor trocada, faltando ou a mais;
    - todos os elementos presentes, sem sobrar nada (`faltando_na_prova` / `sobrando_na_prova` vazios), mesma posição, sem espelhamento (`orientacao` sem `_espelho`);
    - mesmo peso de traço e mesma fonte: `tinta_prova_mm2` perto de `tinta_nossa_mm2` (diferença acima de uns 15% = olhar de perto; no 23337 a prova tinha ~58% da tinta: textos refeitos com outra fonte → não aprovar);
    - margem de 1 mm na largura (área impressa = largura − 2 mm quando a arte vai até a borda);
    - emenda: no corte aleatório, nenhum elemento cortado na emenda (tinta da prova começa e termina com folga nas pontas do fechamento);
    - campos do quadro de informações: modo de impressão **Externa** (papel; "Interna" costuma ser espelhado: confirmar), cilindro/fechamento coerente com o pedido, campos "xxx" ou em branco (só observar);
    - traços e textos muito finos (abaixo de ~0,15 mm) e afinamento ou engrossamento feito pela clicheria.
-6. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a arte aprovada pelo cliente, a nossa arte e a prova conferem entre si; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) ou quando a nossa arte não é a que o cliente aprovou (outra versão, elemento, medida ou cor), e dizer o que corrigir (com a clicheria ou na nossa arte). Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
+6. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a arte aprovada pelo cliente, a nossa arte e a prova conferem entre si; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, uma repetição diferente das outras (ex. parte de um elemento com a cor trocada), fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) ou quando a nossa arte não é a que o cliente aprovou (outra versão, elemento, medida ou cor), e dizer o que corrigir (com a clicheria ou na nossa arte). Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
    Formato de cada pedido no relatório (e no e-mail da rotina):
    ```
    Pedido: I202611-23506
@@ -258,6 +260,7 @@ Ferramentas para o roteiro "Verificar prova da clicheria" da skill. Gera medidas
     vp.info(d['clicheria'], q, 'pedido_23496/info')        # recortes do quadro de informações para ler
     prova = vp.mascara_prova(d['clicheria'], q)            # tinta da prova, 4 px/mm
     r = vp.comparar(prova, nossa, 'pedido_23496/sobreposicao.png')
+    rr = vp.repeticoes(d['clicheria'], q, 2, 'pedido_23496/repeticoes.png')  # repetições iguais entre si? (n.º de cores)
     a = vp.aprovada(d['aprovada'], 'pedido_23496/aprovada')  # o que o cliente aprovou (captura ou PDF)
     qa = vp.quadro_aprovada(a['imagem'], 700, 300)         # quadro da arte na captura (comprimento x largura)
     ra = vp.comparar_aprovada(vp.mascara_aprovada(a['imagem'], qa, 700, 300), nossa, 'pedido_23496/aprov_x_nossa.png')
@@ -640,6 +643,114 @@ def lado_a_lado(imagens, saida, largura_px=1600):
         out.paste(im, (0, y)); y += im.height + 20
     out.save(saida)
     return saida
+
+
+# ---------------------------------------------------------------- elementos repetidos iguais entre si
+def _cores_tinta(a, n_cores, fundo):
+    """Classifica cada pixel em 0 (fundo) ou 1..n_cores (k-means simples nas cores da tinta)."""
+    lum = a.mean(-1)
+    tinta = (lum < fundo - 45) & ~(a[..., 2] > a[..., 0] + 15)      # sem cotas azuis
+    cls = np.zeros(lum.shape, np.uint8)
+    if not tinta.any():
+        return cls, []
+    X = a[tinta].astype(float)
+    c = X[np.linspace(0, len(X) - 1, n_cores).astype(int)]
+    for k in range(n_cores):                                       # sementes afastadas entre si
+        if k:
+            d = np.min([((X - cc) ** 2).sum(1) for cc in c[:k]], 0); c[k] = X[d.argmax()]
+    for _ in range(15):
+        rot = np.argmin([((X - cc) ** 2).sum(1) for cc in c], 0)
+        c = np.array([X[rot == k].mean(0) if (rot == k).any() else c[k] for k in range(n_cores)])
+    cls[tinta] = rot + 1
+    return cls, [tuple(int(v) for v in cc) for cc in c]
+
+
+def repeticoes(prova, q, n_cores, saida, janela_mm=8, min_px=40):
+    """Confere se os elementos que se repetem na prova são iguais entre si (cor e desenho).
+    Ex.: no RUBI 2026 (23311) uma faceta do diamante saiu em dourado em vez de vermelho numa coluna só.
+    Para cada cor, pega cada mancha dessa cor como âncora, recorta uma janela em volta (janela_mm),
+    agrupa as janelas parecidas, faz o "padrão" pixel a pixel (cor mais comum) e mede quanto cada
+    repetição foge dele. Devolve a lista ordenada (pior primeiro) e salva `saida` com os recortes
+    das piores (padrão | repetição) para OLHAR. `suspeitos`: repetições que fogem do padrão bem mais
+    que as outras (>= 50 px e >= 4x o percentil 90). `troca[i][j]` = pixels da cor i na repetição onde
+    o padrão tem a cor j (0 = fundo; cores na ordem de `cores`). Elemento com cor ou desenho diferente
+    dos outros iguais a ele = falha: REPROVAR."""
+    px = 300 / 25.4
+    a = np.array(Image.open(prova).convert('RGB').crop((q['x0'], q['y0'], q['x1'], q['y1']))).astype(int)
+    fundo = np.median(a.mean(-1))
+    cls, cores = _cores_tinta(a, n_cores, fundo)
+    m = int(janela_mm * px / 2)
+    res = []
+    tinta = cls > 0
+    # âncoras: manchas de tinta (qualquer cor) unidas com folga de ~0,5 mm, para o elemento inteiro
+    # (ex. diamante com as facetas) ser uma âncora só, independente da cor de cada parte
+    lab, k = ndimage.label(ndimage.binary_closing(tinta, iterations=int(0.5 * px)) | tinta)
+    for cor in (0,):
+        if not k:
+            continue
+        tam = ndimage.sum(tinta, lab, range(1, k + 1))
+        with np.errstate(invalid='ignore'):
+            cms = ndimage.center_of_mass(tinta, lab, range(1, k + 1))
+        jan = []
+        for t, (cy, cx) in zip(tam, cms):
+            if t < min_px:
+                continue
+            cy, cx = int(cy), int(cx)
+            if t < min_px or cy < m + 4 or cx < m + 4 or cy + m + 4 > cls.shape[0] or cx + m + 4 > cls.shape[1]:
+                continue
+            jan.append((cx, cy, int(t)))
+        # grupos pela forma: janela (tinta sim/não) parecida com a do primeiro do grupo (IoU > 0,8, ±3 px)
+        def alinhar(cx, cy, ref):
+            best = None
+            for dy in range(-3, 4):
+                for dx in range(-3, 4):
+                    w = cls[cy + dy - m:cy + dy + m, cx + dx - m:cx + dx + m]
+                    t = w > 0; r = ref > 0
+                    s = (t & r).sum() / max((t | r).sum(), 1)
+                    if best is None or s > best[0]:
+                        best = (s, w, cx + dx, cy + dy)
+            return best
+        grupos = []
+        tams = []
+        for cx, cy, t in jan:
+            for g, tg in zip(grupos, tams):
+                if not (0.75 < t / tg < 1.33):                    # tamanho muito diferente: outro elemento
+                    continue
+                s, w, x, y = alinhar(cx, cy, g[0][0])
+                if s > 0.8:
+                    g.append((w, x, y)); break
+            else:
+                grupos.append([(cls[cy - m:cy + m, cx - m:cx + m], cx, cy)]); tams.append(t)
+        for g in grupos:
+            if len(g) < 4:
+                continue
+            A = np.stack([w for w, _, _ in g])
+            padrao = np.argmax([(A == v).sum(0) for v in range(n_cores + 1)], 0)
+            for (w, cx, cy) in g:
+                dif = ndimage.binary_opening(w != padrao)          # tira franjas de 1 px do JPG
+                troca = [[int(((w == i) & (padrao == j)).sum()) for j in range(n_cores + 1)] for i in range(n_cores + 1)]
+                res.append(dict(x_mm=round(cx / px, 1), y_mm=round(cy / px, 1), grupo=len(g),
+                                dif_px=int(dif.sum()), troca=troca, _w=w, _p=padrao))
+    if not res:
+        return dict(cores=cores, suspeitos=[], elementos=[])
+    p90 = float(np.percentile([r['dif_px'] for r in res], 90))
+    for r in res:
+        r['suspeito'] = r['dif_px'] >= max(50, 4 * p90)
+    res.sort(key=lambda r: -r['dif_px'])
+    paleta = np.array([(255, 255, 255)] + [c for c in cores], np.uint8)
+    piores = res[:6]
+    tiles = []
+    for r in piores:
+        t = np.concatenate([paleta[r['_p']], np.full((r['_p'].shape[0], 6, 3), 128, np.uint8), paleta[r['_w']]], 1)
+        tiles.append(Image.fromarray(t).resize((t.shape[1] * 3, t.shape[0] * 3), Image.NEAREST))
+    out = Image.new('RGB', (max(t.width for t in tiles), sum(t.height + 10 for t in tiles)), 'white')
+    y = 0
+    for t in tiles:
+        out.paste(t, (0, y)); y += t.height + 10
+    out.save(saida)
+    for r in res:
+        r.pop('_w'); r.pop('_p')
+    return dict(cores=cores, p90_px=p90, suspeitos=[r for r in res if r['suspeito']], elementos=res)
 ```
 
 ## Publicar no tiiny.host (só depois da aprovação)
