@@ -517,7 +517,11 @@ print(r['link'], r['download_desativado'])     # https://nomedaarte50x70v1.tiiny
    - **Downloads desativados** pela configuração `disableExportPdf: true` (a mesma do botão "Disable PDF Downloads"); o script confere depois e devolve `download_desativado`.
    - Antes de enviar, o script confere o limite de projetos do plano (999 em 19/11/2026) e o tamanho máximo do arquivo (10 MB). Se o limite estiver estourado, avisar o usuário; não apagar projetos antigos sem pedido explícito e sem ele aprovar a lista.
    - Se o nome já existe, o script para. Perguntar se é para atualizar aquele projeto (`atualizar=True`, troca o arquivo e mantém o link) ou publicar com outra versão.
-5. Devolver ao usuário o link numa linha fácil de copiar, para ele repassar à área solicitante, e dizer se os downloads ficaram desativados.
+5. Devolver ao usuário o link **sempre dentro de um bloco de código** (três crases, só o link, sem mais nada dentro), para aparecer com o botão de copiar e ele repassar ao vendedor com um toque (regra do usuário, 24/11/2026). Ex.:
+   ```text
+   https://nomedaarte50x70v1.tiiny.site
+   ```
+   Fora do bloco, uma linha dizendo se os downloads ficaram desativados.
 
 ## publicar_tiiny.py
 ```python
