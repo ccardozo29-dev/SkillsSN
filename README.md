@@ -6,6 +6,7 @@ Skills do Claude da **Sol Nascente Papéis**, versionadas.
 |---|---|---|
 | [`teamdesk-sol-nascente`](teamdesk-sol-nascente/SKILL.md) | ver [`VERSION`](teamdesk-sol-nascente/VERSION) | Consultar e alterar o TeamDesk da empresa (banco 72265) pela API REST: pedidos, clientes, produção, estoque, compras e financeiro. |
 | [`arte-flexo-sol-nascente`](arte-flexo-sol-nascente/SKILL.md) | ver [`VERSION`](arte-flexo-sol-nascente/VERSION) | Criar, revisar e entregar artes de papel de seda em flexografia: repetição que fecha no cilindro (330/420 mm), cores Pantone Solid Coated e PDF no padrão da empresa (ficha técnica + folha) que abre no CorelDRAW 2019. |
+| [`verificacao-pedidos-sol-nascente`](verificacao-pedidos-sol-nascente/SKILL.md) | ver [`VERSION`](verificacao-pedidos-sol-nascente/VERSION) | Conferir pedidos do TeamDesk em busca de inconsistências. Verificação 1: ordem de compra do cliente (OC) × pedido (prazo, itens, preços, unidades, quantidades, CNPJ, endereços, pagamento e frete). |
 
 ## Estrutura
 
