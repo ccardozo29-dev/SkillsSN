@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.11.0 – 25/11/2026
+- Verificação da prova ganha o passo 0: a `Referência da Arte` do pedido (arte nova) não pode já existir em Produtos (nome do produto, ex. "PAPEL SEDA <ref>", "PAPEL KRAFT <ref>") nem em Clichês (`Identificação`). Referência igual = REPROVAR (dar outro nome ou tratar como reimpressão); nomes parecidos (um contém o outro) vão em "Confirmar antes de aprovar".
+- `verificar_prova.py`: nova função `referencia_existente()` (compara sem acento, sem tipo de papel e sem gramatura; ignora o produto e o clichê do próprio pedido). `baixar()` passa a trazer o `Clichê a utilizar` dos itens.
+
 ## v1.10.0 – 25/11/2026
 - Verificação da prova: o fechamento passa a ser conferido sempre pelo "Tamanho da embalagem" do quadro de informações da clicheria (`nnn x 330 mm`, `nnn x 420 mm` etc.), não pelo campo cilindro/fechamento.
 - Ignorados no relatório e no e-mail: código do cliente "XXX", substrato "PIG BRANCO" e o campo cilindro/fechamento (valores padrão da Clicheart).

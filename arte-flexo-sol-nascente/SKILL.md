@@ -201,6 +201,12 @@ Regra do usuário (23/11/2026). A clicheria (Clicheart, Flexoart, CWB Matrizes, 
 - `Arte Vetorial`: a arte que **nós** fizemos e mandamos para a clicheria (PDF do padrão ou CDR).
 - `Arte Clicheria`: a prova que a **clicheria** fez.
 A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo 4) e vetorial x clicheria (passos 2, 3 e 5). Se só uma das duas comparações bater, a sugestão é REPROVAR.
+
+**Referência nova** (regra do usuário, 25/11/2026): os pedidos verificados são artes novas, e o que identifica a arte é o nome no campo `Referência da Arte` do pedido. Esse nome não pode já existir em **Produtos** (no nome do produto, ex. "PAPEL SEDA <ref>", "PAPEL KRAFT <ref>", "PAPEL BARREIRA <ref>") nem em **Clichês** (campo `Identificação`). Conferir com `verificar_prova.referencia_existente(referencia, pedido)` (passo 0).
+0. Referência já existe? `r = verificar_prova.referencia_existente(p['Referência da Arte'], pedido)`. Compara os nomes em maiúsculas, sem acento e sem pontuação, tirando do nome do produto o tipo do papel ("PAPEL SEDA", "PAPEL DE SEDA", "PAPEL KRAFT", "PAPEL BARREIRA", "(PP)"...) e a gramatura do fim ("20grm"). Ignora o produto e o clichê do próprio pedido (quando o clichê chega, o pedido ganha produto e clichê com o nome da referência).
+   - `r['iguais']` não vazio = a referência já existe: **REPROVAR** e dizer onde (ex. "Clichê 2060 RUBI", "Produto P02461 PAPEL SEDA RUBI"). Pedir para dar outro nome à arte (ex. com o ano ou a coleção) antes de aprovar o clichê, ou, se for a mesma arte, tratar como reimpressão com o clichê que já existe.
+   - `r['parecidas']` (um nome contém o outro, ex. "GROWFIT" x "GROWFIT 2026") não muda a sugestão: listar no e-mail em "Confirmar antes de aprovar" para conferir que é mesmo arte nova e que o nome distingue das anteriores.
+   - Nenhuma: dizer no relatório "Referência nova: não existe em Produtos nem em Clichês".
 1. Baixar com `verificar_prova.baixar(pedido, pasta)` (baixa as três artes; usa `teamdesk.py` da skill teamdesk-sol-nascente; `TEAMDESK_TOKEN` do documento do Projeto). CDR é convertido com o LibreOffice (`soffice`); a arte costuma estar no canto superior esquerdo da página 2: usar `recorte_mm=(0, 0, comprimento, largura)` do formato do item (ex. 30x70 → `(0, 0, 700, 300)`). Arte em tinta branca é pintada de preto para enxergar.
 2. `quadro()` acha o módulo na prova; `info()` recorta o quadro de informações: **ler** cores, tamanho da embalagem, área impressa, modo de impressão, pistas x imagens. O fechamento se confere pelo **tamanho da embalagem** (ex. `300 x 330 mm`, `300 x 420 mm`), não pelo campo cilindro/fechamento (regra do usuário, 25/11/2026).
 3. `mascara_prova()` + `nossa_pdf()` + `comparar()` (`periodo=True` no corte aleatório: a prova é um módulo que se repete; `periodo=False` no corte individual). Olhar a sobreposição (`recortes()` para ampliar): cinza = igual, vermelho = só na nossa, azul = só na prova. Franjas de 1 px são normais (JPG). As legendas e cotas da prova podem aparecer em azul.
@@ -212,6 +218,7 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
    - Se o quadro não for achado (captura cortada, zoom diferente), comparar olhando `lado_a_lado([imagem_aprovada, sobreposicao_ou_pagina_da_nossa])`.
    - Sem `Arte Aprovada` no pedido: dizer no relatório que não deu para conferir a aprovação do cliente.
 5. Conferir e relatar, item por item:
+   - referência da arte nova: não existe em Produtos nem em Clichês (passo 0); parecidas vão em "Confirmar antes de aprovar";
    - arte aprovada pelo cliente = nossa arte (passo 4): mesma versão, elementos, posição, medidas e cores;
    - tamanho do módulo = largura x fechamento do pedido (330 ou 420 no corte aleatório; folha inteira no corte individual). O fechamento é conferido **sempre pelo "Tamanho da embalagem"** do quadro de informações (`nnn x 330 mm`, `nnn x 420 mm` etc.), que tem que bater com o fechamento do pedido e com o quadro medido por `quadro()`;
    - cor(es) e quantidade = as da ficha e as do item no TeamDesk (avisar divergência no cadastro, ex. item "PRETO" e arte Pantone 476 C);
@@ -222,7 +229,7 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
    - emenda: no corte aleatório, nenhum elemento cortado na emenda (tinta da prova começa e termina com folga nas pontas do fechamento);
    - campos do quadro de informações: modo de impressão **Externa** (papel; "Interna" costuma ser espelhado: confirmar). **Ignorar** (não citar no relatório nem no e-mail; regra do usuário, 25/11/2026): código do cliente "XXX", substrato "PIG BRANCO" (ou "xxx") e o campo cilindro/fechamento (ex. "300mm / 288mm", "420 / 411 mm"), que vem padrão da Clicheart; o fechamento vale pelo tamanho da embalagem;
    - traços e textos muito finos (abaixo de ~0,15 mm) e afinamento ou engrossamento feito pela clicheria.
-6. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a arte aprovada pelo cliente, a nossa arte e a prova conferem entre si; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, uma repetição diferente das outras (ex. parte de um elemento com a cor trocada), fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) ou quando a nossa arte não é a que o cliente aprovou (outra versão, elemento, medida ou cor), e dizer o que corrigir (com a clicheria ou na nossa arte). Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
+6. Resultado: sugestão **APROVAR** ou **REPROVAR** (regra do usuário, 24/11/2026). APROVAR quando a arte aprovada pelo cliente, a nossa arte e a prova conferem entre si; o que só precisa ser confirmado com a clicheria ou o comercial vai na explicação, em "Confirmar antes de aprovar". REPROVAR quando a prova diverge (elemento faltando ou sobrando, uma repetição diferente das outras (ex. parte de um elemento com a cor trocada), fonte ou peso de traço diferente, tamanho ou cor errados, espelhada) ou quando a nossa arte não é a que o cliente aprovou (outra versão, elemento, medida ou cor), ou quando a referência já existe em Produtos ou Clichês (passo 0), e dizer o que corrigir (com a clicheria ou na nossa arte). Gerar imagem lado a lado quando houver divergência visual. Não alterar nada no TeamDesk sem pedido do usuário (o campo "Clichê aprovado" às vezes já vem marcado: avisar se a sugestão for REPROVAR).
    Formato de cada pedido no relatório (e no e-mail da rotina):
    ```
    Pedido: I202611-23506
@@ -233,7 +240,7 @@ A cadeia é aprovada = vetorial = clicheria: conferir aprovada x vetorial (passo
 7. Registrar cada verificação no documento do Projeto `claude/verificacoes-clicheria.md` (pedido, revisão do anexo `Arte Clicheria`, data, resultado, resumo). Uma nova revisão da prova (o número entre os `;` do anexo muda) precisa de nova verificação.
 
 ### Rotina agendada (seg a sex, 8h às 18h, de hora em hora)
-Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima), mandar **um e-mail por pedido** pelo Gmail (conector Gmail, `send_message`, enviado da conta ccardozo29@gmail.com) para claudio@solnascentepapeis.com.br, sempre com cópia (cc) para nelly.medeiros@solnascentepapeis.com (regra do usuário, 24/11/2026), com assunto `Arte: <Referência da Arte> Sugestão: APROVAR` (ou REPROVAR) e corpo no formato acima, em texto simples; só depois registrar no documento. A notificação no celular traz uma linha por pedido. Sem pedido novo: terminar sem e-mail nem notificação.
+Procurar pedidos com `[Situação]="NORMAL" and [Etapa]="Aguardando Clichê" and not IsNull([Arte Aprovada]) and not IsNull([Arte Clicheria])` cuja combinação pedido + revisão da `Arte Clicheria` não esteja em `claude/verificacoes-clicheria.md`. Verificar cada um (roteiro acima, começando pelo passo 0: referência já existe em Produtos ou Clichês), mandar **um e-mail por pedido** pelo Gmail (conector Gmail, `send_message`, enviado da conta ccardozo29@gmail.com) para claudio@solnascentepapeis.com.br, sempre com cópia (cc) para nelly.medeiros@solnascentepapeis.com (regra do usuário, 24/11/2026), com assunto `Arte: <Referência da Arte> Sugestão: APROVAR` (ou REPROVAR) e corpo no formato acima, em texto simples; só depois registrar no documento. A notificação no celular traz uma linha por pedido. Sem pedido novo: terminar sem e-mail nem notificação.
 
 Para usar os scripts numa sessão nova, extrair os blocos de código das skills (fonte: repositório público `github.com/ccardozo29-dev/SkillsSN`):
 ```python
@@ -255,6 +262,7 @@ Ferramentas para o roteiro "Verificar prova da clicheria" da skill. Gera medidas
 
     import verificar_prova as vp
     d = vp.baixar('I202611-23496', 'pedido_23496')        # dados do pedido + anexos (usa teamdesk.py)
+    ref = vp.referencia_existente(d['pedido']['Referência da Arte'], 'I202611-23496')  # já existe em Produtos/Clichês?
     nossa = vp.nossa_pdf(d['vetorial'])                    # PDF da ficha (pág. 2) ou CDR convertido
     q = vp.quadro(d['clicheria'])                          # quadro do módulo na prova (px) e tamanho em mm
     vp.info(d['clicheria'], q, 'pedido_23496/info')        # recortes do quadro de informações para ler
@@ -283,7 +291,7 @@ def baixar(pedido, pasta):
             'Clicheria', 'Clichê aprovado', 'Clichê recebido', 'Notas Clicheria', 'Observações', 'Etapa',
             'Previsão', 'Arte Vetorial', 'Arte Clicheria', 'Arte Aprovada']
     p = td.registro('Pedido', pedido, cols)
-    itens = td.consultar('Item', ['Id', 'Produto', 'Formato', 'Substrato', 'Cores', 'Qtd', 'Unid'],
+    itens = td.consultar('Item', ['Id', 'Produto', 'Formato', 'Substrato', 'Cores', 'Qtd', 'Unid', 'Clichê a utilizar'],
                          filtro=f'[Pedido]="{pedido}"')
     out = dict(pedido=p, itens=itens)
     for col, chave in (('Arte Vetorial', 'vetorial'), ('Arte Clicheria', 'clicheria'), ('Arte Aprovada', 'aprovada')):
@@ -292,6 +300,56 @@ def baixar(pedido, pasta):
             nome = v.split(';')[0]
             out[chave] = td.anexo('Pedido', col, pedido, os.path.join(pasta, f'{chave}_{nome}'))
             out[chave + '_rev'] = v.split(';')[1] if v.count(';') >= 1 else '1'
+    return out
+
+
+def _norm_ref(s, produto=False):
+    """Nome em maiúsculas, sem acento e sem pontuação. produto=True tira o tipo do papel do começo
+    ('PAPEL DE SEDA', 'PAPEL SEDA', 'PAPEL KRAFT', 'PAPEL BARREIRA', 'PAPEL', '(PP)') e a gramatura do fim."""
+    import unicodedata
+    s = unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode().upper()
+    s = re.sub(r'[^A-Z0-9]+', ' ', s).strip()
+    if produto:
+        s = re.sub(r'^(PP )?(PAPEL )?(DE )?(SEDA|KRAFT|BARREIRA|MANTEIGA|ANTIGORDURA|SULFITE|IMPORTADO)?\s*', '', s)
+        s = re.sub(r'(\s+\d+\s*G(R|RM|RS)?M?)+$', '', s).strip()
+    return s
+
+
+def referencia_existente(referencia, pedido=None):
+    """Arte nova: a `Referência da Arte` não pode já existir como produto ('PAPEL SEDA <ref>',
+    'PAPEL KRAFT <ref>' etc.) nem como clichê (`Identificação`). Devolve dict com
+    `iguais` (mesmo nome depois de tirar o tipo do papel e a gramatura: referência repetida) e
+    `parecidas` (um nome contém o outro, palavra inteira, ex. 'GROWFIT' x 'GROWFIT 2026': conferir).
+    Os do próprio `pedido` são ignorados: o produto dos itens (`Produto`), o clichê desse produto
+    (`Produto.Clichê`) e o `Clichê a utilizar` dos itens (quando o clichê chega, o pedido ganha produto
+    e clichê com o mesmo nome da referência)."""
+    import teamdesk as td
+    ref = _norm_ref(referencia)
+    proprios_prod, proprios_cli = set(), set()
+    if pedido:
+        for it in td.consultar('Item', ['Produto', 'Clichê a utilizar'], filtro=f'[Pedido]="{pedido}"'):
+            proprios_prod.add(str(it.get('Produto') or '')); proprios_cli.add(str(it.get('Clichê a utilizar') or ''))
+    out = dict(referencia=referencia, normalizada=ref, iguais=[], parecidas=[])
+    if not ref:
+        return out
+    produtos = td.consultar('Produto', ['Produto #', 'Nome', 'Clichê'])
+    proprios_cli |= {str(x.get('Clichê')) for x in produtos if str(x.get('Produto #')) in proprios_prod and x.get('Clichê')}
+    pal = r'(^| )%s( |$)'
+    fontes = [('Produto', 'Produto #', 'Nome', proprios_prod, True, produtos),
+              ('Clichê', 'Id', 'Identificação', proprios_cli, False, None)]
+    for tabela, chave, campo, proprios, produto, linhas in fontes:
+        for x in (linhas if linhas is not None else td.consultar(tabela, [chave, campo])):
+            if str(x.get(chave)) in proprios:
+                continue
+            n = _norm_ref(x.get(campo), produto)
+            if not n:
+                continue
+            item = (tabela, x.get(chave), x.get(campo))
+            if n == ref:
+                out['iguais'].append(item)
+            elif re.search(pal % re.escape(ref), n) or re.search(pal % re.escape(n), ref):
+                if len(n) >= 3:
+                    out['parecidas'].append(item)
     return out
 
 
