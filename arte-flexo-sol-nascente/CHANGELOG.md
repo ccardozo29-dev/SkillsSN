@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.10.0 – 25/11/2026
+- Verificação da prova: o fechamento passa a ser conferido sempre pelo "Tamanho da embalagem" do quadro de informações da clicheria (`nnn x 330 mm`, `nnn x 420 mm` etc.), não pelo campo cilindro/fechamento.
+- Ignorados no relatório e no e-mail: código do cliente "XXX", substrato "PIG BRANCO" e o campo cilindro/fechamento (valores padrão da Clicheart).
+
 ## v1.9.1 – 24/11/2026
 - `repeticoes()`: novo parâmetro `limiar` (use 20 na tinta branca, que a prova simula em cinza claro). Roteiro explica como comparar à mão repetições giradas (logos a 180° no corte individual).
 
