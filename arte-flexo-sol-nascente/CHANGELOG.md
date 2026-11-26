@@ -1,5 +1,9 @@
 # Changelog: arte-flexo-sol-nascente
 
+## v1.12.0 – 26/11/2026
+- Novo passo OBRIGATÓRIO antes de criar arte nova: conferir se o nome já existe (Pedidos `Referência da Arte`, Produtos, Clichês e Clientes no TeamDesk; pastas do Dropbox; links do tiiny.host). Nome igual = parar e perguntar (reimpressão, nova versão ou outro nome); parecido = confirmar; cliente encontrado = listar as artes que ele já tem.
+- Novo script `conferir_nome.py` (`conferir()` e `resumo()`), embutido no SKILL.md. "Como gerar" ganha o passo 0.
+
 ## v1.11.0 – 25/11/2026
 - Verificação da prova ganha o passo 0: a `Referência da Arte` do pedido (arte nova) não pode já existir em Produtos (nome do produto, ex. "PAPEL SEDA <ref>", "PAPEL KRAFT <ref>") nem em Clichês (`Identificação`). Referência igual = REPROVAR (dar outro nome ou tratar como reimpressão); nomes parecidos (um contém o outro) vão em "Confirmar antes de aprovar".
 - `verificar_prova.py`: nova função `referencia_existente()` (compara sem acento, sem tipo de papel e sem gramatura; ignora o produto e o clichê do próprio pedido). `baixar()` passa a trazer o `Clichê a utilizar` dos itens.

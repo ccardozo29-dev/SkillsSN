@@ -53,7 +53,144 @@ description: "Use ao criar, revisar ou entregar artes de papel de seda em flexog
   - Cores especiais com alternativa Lab D50 e função tipo 2, como o Corel exporta; sem sobreimpressão.
   - Textos convertidos em curvas (contornos da Liberation Sans, que tem as mesmas medidas da Arial).
 
+## Conferir o nome da arte antes de criar (OBRIGATÓRIO)
+Regra do usuário (26/11/2026). Antes de criar qualquer arte nova (v1), conferir se o nome já existe na base. Sem essa conferência não se monta a arte, não se grava no Dropbox e não se publica. Foi pulada na New Form 30x70 (26/11/2026) e o usuário cobrou.
+1. Rodar `conferir_nome.conferir('<Nome da Arte>')` (script abaixo; usa `teamdesk.py` da skill teamdesk-sol-nascente, `dropbox_artes.py` e `publicar_tiiny.py`, com as credenciais do documento do Projeto `claude/credenciais.md` nas variáveis de ambiente). Ele procura o nome, sem acento, maiúsculas, espaços e símbolos (e sem tipo de papel e gramatura nos produtos), em:
+   - TeamDesk: `Referência da Arte` dos Pedidos, `Nome` dos Produtos, `Identificação` dos Clichês e `Empresa` dos Clientes;
+   - Dropbox: pastas em `/SolNascente/Artes Clientes/`;
+   - tiiny.host: links que começam com o nome.
+2. Resultado:
+   - **LIVRE** (nada igual): seguir com a arte;
+   - **JÁ EXISTE** (igual em Pedidos, Produtos, Clichês, Dropbox ou tiiny): parar e perguntar ao usuário se é reimpressão (usar a arte e o clichê que já existem), nova versão da mesma arte (vN+1) ou arte nova com outro nome (ex. com o ano: "NOME 2026");
+   - **parecido** (um nome contém o outro): avisar e confirmar antes de seguir;
+   - cliente encontrado: listar as artes que ele já tem (`artes_do_cliente`) e perguntar se a nova substitui alguma delas.
+3. Na entrega, uma linha com o resultado da conferência (ex.: "Nome conferido: livre no TeamDesk, no Dropbox e no tiiny.host; o cliente já tem a arte VALORIE").
+4. Correção ou nova versão de uma arte que nós mesmos criamos nesta conversa não precisa de nova conferência.
+
+## conferir_nome.py
+```python
+"""Confere se o nome de uma arte nova já existe na Sol Nascente Papéis, ANTES de criar a arte.
+
+Procura no TeamDesk (Referência da Arte dos pedidos, nome dos produtos, identificação dos clichês e
+empresa dos clientes), na pasta do Dropbox (/SolNascente/Artes Clientes/<Nome>) e nos links do
+tiiny.host. Compara sem acento, sem maiúsculas, sem espaços/símbolos e sem o tipo de papel e a
+gramatura dos produtos ("PAPEL SEDA NEW FORM 20G" -> "NEWFORM").
+
+    import conferir_nome as cn          # TEAMDESK_TOKEN (e, se houver, credenciais do Dropbox e TIINY_API_KEY) no ambiente
+    r = cn.conferir('New Form')
+    print(cn.resumo(r))
+"""
+import json, os, re, unicodedata
+import requests
+
+_PAPEL = r'\b(PAPEL|SEDA|KRAFT|PARDO|BARREIRA|TECH|RECICLADO|TRANSLUCIDO|ESPECIAL|IMPORTADO|BOBINA|BOBINAS|FOLHAS?)\b'
+_GRAM = r'\b\d+([.,]\d+)?\s*(G|GR|GRM|GRS|GRAMAS?)\b|\b\d+\s*X\s*\d+\b'
+
+
+def chave(s, produto=False):
+    """Nome normalizado para comparar: sem acento, maiúsculo, só letras e números."""
+    s = unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode().upper()
+    if produto:
+        s = re.sub(_GRAM, ' ', s)
+        s = re.sub(_PAPEL, ' ', s)
+    return re.sub(r'[^A-Z0-9]', '', s)
+
+
+def _compara(nome, valor, produto=False):
+    a, b = chave(nome), chave(valor, produto)
+    if not a or not b:
+        return None
+    if a == b:
+        return 'igual'
+    if len(b) >= 3 and (a in b or b in a):
+        return 'parecido'
+    return None
+
+
+def _teamdesk(nome):
+    import teamdesk as td
+    achados = []
+    termos = {w for w in re.findall(r'[A-Za-z0-9]{3,}', unicodedata.normalize('NFKD', nome)
+                                    .encode('ascii', 'ignore').decode())} or {nome}
+    termo = max(termos, key=len)                    # filtro largo no servidor, comparação fina aqui
+    fontes = [('Pedido', ['Pedido #', 'Referência da Arte', 'Empresa', 'Criado em', 'Arte', 'Etapa', 'Situação'],
+               'Referência da Arte', False),
+              ('Produto', ['Produto #', 'Nome', 'Clichê', 'Ativo'], 'Nome', True),
+              ('Clichê', ['Id', 'Identificação', 'Localização', 'Fechamento'], 'Identificação', False),
+              ('Cliente', ['Código #', 'Empresa', 'Cidade', 'UF', '# Pedidos'], 'Empresa', False)]
+    for tabela, cols, campo, produto in fontes:
+        for x in td.consultar(tabela, cols, filtro=f'Contains([{campo}],"{termo}")'):
+            t = _compara(nome, x.get(campo), produto)
+            if t:
+                achados.append(dict(tabela=tabela, tipo=t, valor=x.get(campo), registro=x))
+    # artes que os clientes encontrados já têm
+    outras, vistos = [], set()
+    for emp in {str(a['valor']).replace('"', '') for a in achados if a['tabela'] == 'Cliente'}:
+        for p in td.consultar('Pedido', ['Pedido #', 'Referência da Arte', 'Criado em', 'Arte', 'Etapa'],
+                              filtro=f'[Empresa]="{emp}"'):
+            if p.get('Pedido #') not in vistos:
+                vistos.add(p.get('Pedido #')); outras.append(p)
+    return achados, outras
+
+
+def _dropbox(nome):
+    if not os.environ.get('DROPBOX_REFRESH_TOKEN'):
+        return None
+    import dropbox_artes as dbx
+    st, d = dbx._rpc('files/list_folder', {'path': dbx.BASE})
+    if st != 200:
+        return dict(erro=str(d)[:200])
+    pastas, cur = [], d
+    while True:
+        pastas += [e['name'] for e in cur.get('entries', []) if e.get('.tag') == 'folder']
+        if not cur.get('has_more'):
+            break
+        st, cur = dbx._rpc('files/list_folder/continue', {'cursor': cur['cursor']})
+    return [dict(pasta=p, tipo=_compara(nome, p)) for p in pastas if _compara(nome, p)]
+
+
+def _tiiny(nome):
+    if not os.environ.get('TIINY_API_KEY'):
+        return None
+    import publicar_tiiny as tiiny
+    a = chave(nome).lower()
+    return sorted(d for d in tiiny.situacao()['dominios'] if d and d.startswith(a))
+
+
+def conferir(nome):
+    """Devolve dict(nome, livre, teamdesk, artes_do_cliente, dropbox, tiiny).
+    livre=False quando o nome (normalizado) já existe igual em Pedidos, Produtos, Clichês, Dropbox ou tiiny."""
+    td, outras = _teamdesk(nome)
+    dbx, tny = _dropbox(nome), _tiiny(nome)
+    iguais = [a for a in td if a['tipo'] == 'igual' and a['tabela'] != 'Cliente']
+    iguais += [p for p in (dbx or []) if isinstance(p, dict) and p.get('tipo') == 'igual']
+    iguais += [d for d in (tny or [])]
+    return dict(nome=nome, livre=not iguais, iguais=iguais, teamdesk=td, artes_do_cliente=outras,
+                dropbox=dbx, tiiny=tny)
+
+
+def resumo(r):
+    L = [f"Nome da arte: {r['nome']} -> {'LIVRE' if r['livre'] else 'JÁ EXISTE'}"]
+    for a in r['teamdesk']:
+        x = a['registro']
+        k = x.get('Pedido #') or x.get('Produto #') or x.get('Id') or x.get('Código #')
+        L.append(f"  TeamDesk {a['tabela']} {k}: {a['valor']} ({a['tipo']})")
+    for p in r['artes_do_cliente']:
+        L.append(f"  Arte do cliente: {p.get('Referência da Arte')} (pedido {p.get('Pedido #')}, "
+                 f"{str(p.get('Criado em'))[:10]}, {p.get('Arte')}, {p.get('Etapa')})")
+    if r['dropbox'] is None:
+        L.append('  Dropbox: não conferido (sem credenciais)')
+    else:
+        L += [f"  Dropbox: pasta {p['pasta']} ({p['tipo']})" for p in r['dropbox']] or ['  Dropbox: nenhuma pasta com esse nome']
+    if r['tiiny'] is None:
+        L.append('  tiiny.host: não conferido (sem chave)')
+    else:
+        L += [f"  tiiny.host: {d}" for d in r['tiiny']] or ['  tiiny.host: nenhum link com esse nome']
+    return '\n'.join(L)
+```
+
 ## Como gerar
+0. **Antes de tudo (arte nova):** conferir o nome com `conferir_nome.py` (ver "Conferir o nome da arte antes de criar"). Nome que já existe: parar e perguntar.
 1. Montar a arte como PDF de uma página em 1:1 (C x L mm) com cores especiais (reportlab `CMYKColorSep(..., spotName='PANTONE XXXX C')`). Fundo chapado: um retângulo do quadro inteiro. A estampa pode encostar nas bordas: o `gerar()` corta a arte a 1 mm em cima e embaixo e deixa o fundo inteiro.
 2. A logomarca da Sol Nascente já está embutida no `ficha.py` (`LOGO_SN`, vetorial, cores da marca) e o `gerar()` a coloca sozinho no quadrado da esquerda do cabeçalho: não passar `modelo` e não pedir ficha nem logo ao usuário. Toda ficha entregue tem que sair com essa logo. `carregar_modelo('<ficha>.pdf')` só se o usuário pedir para usar a logo de uma ficha específica.
 3. Salvar o código abaixo como `ficha.py` (usa `reportlab`, `pikepdf` e a fonte Liberation Sans, que tem as mesmas medidas da Arial) e rodar, por exemplo:
@@ -251,6 +388,7 @@ def extrair(skill_md, titulo, destino):
     open(destino, 'w', encoding='utf-8').write(bloco)
 extrair('SkillsSN/teamdesk-sol-nascente/SKILL.md', 'teamdesk.py', 'teamdesk.py')
 extrair('SkillsSN/arte-flexo-sol-nascente/SKILL.md', 'verificar_prova.py', 'verificar_prova.py')
+extrair('SkillsSN/arte-flexo-sol-nascente/SKILL.md', 'conferir_nome.py', 'conferir_nome.py')
 ```
 
 ## verificar_prova.py
